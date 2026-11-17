@@ -85,6 +85,9 @@ th{color:var(--mut);font-weight:500;font-size:12px}
 .foot{margin:28px 0 20px;padding-top:14px;border-top:1px solid var(--line);font-size:11px;line-height:1.5;color:var(--mut)}.foot a{color:var(--blue)}.foot p{margin:0 0 8px}
 .inst{display:flex;align-items:center;gap:10px;background:#11151c;border:1px solid var(--acc);border-radius:12px;padding:10px 12px;margin:14px 0;font-size:13px}.inst[hidden]{display:none}.inst b{color:var(--fg)}.inst button{margin-left:auto;flex:none;background:var(--acc);color:#06140d;border:0;border-radius:8px;padding:8px 12px;font-weight:700}.inst .x{background:none;color:var(--mut);padding:4px 6px;margin-left:0}
 body{padding-bottom:env(safe-area-inset-bottom)}
+.lv{display:flex;flex-direction:column;align-items:flex-start;gap:3px}.lsc{font-size:15px}
+.ltag{font-size:11px;font-weight:700;color:#fff;background:var(--bad);border-radius:5px;padding:1px 5px;animation:pulse 1.6s ease-in-out infinite}.ftag{font-size:11px;font-weight:700;color:var(--mut);background:#232a38;border-radius:5px;padding:1px 5px}
+.lbanner{font-size:13px;background:#11151c;border:1px solid var(--line);border-radius:8px;padding:7px 10px;margin:0 0 8px}.lbanner.on{border-color:var(--bad)}.lbanner .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bad);margin-right:6px;animation:pulse 1.2s infinite}
 .closebar{display:block;width:100%;margin-top:10px;padding:10px;border-radius:8px;font-size:13px;color:var(--blue);background:#11151c;border:1px solid var(--line)}
 .fx .tm2{display:flex;flex-direction:column;gap:5px;font-size:14px;min-width:0}
 .fx .tm2 span.tm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -386,11 +389,11 @@ function renderFixtures(F){
       const pk=p.pick==="draw"?"Draw":p.pick==="home"?f.home:f.away,pv=p.pick==="draw"?p.pD:p.pick==="home"?p.pH:p.pA;
       const t=new Date(f.time).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
       return `<button class="fx${open?" open":""}" data-k="${esc(k)}" aria-expanded="${open}">
-        <span class="num" style="font-size:13px">${t}</span>
+        ${liveCell(f,t)}
         <span class="tm2">${tm(f.home,1)}${tm(f.away,1)}</span>
         <span class="pk"><b>${pct(pv)}</b>${esc(pk==="Draw"?"Draw":(BADGE[pk]?BADGE[pk][0]:pk.slice(0,3).toUpperCase())+" win")}</span>${chev(open)}</button>`+
         (!TAPPED&&!OPEN&&(FIRST++)===0?hintTag():"")+
-        (open?`<div class="fxd">${renderPred([f])}${closeBar("data-k",k)}</div>`:"");}).join("")).join("");
+        (open?`<div class="fxd">${liveBanner(f)}${renderPred([f])}${closeBar("data-k",k)}</div>`:"");}).join("")).join("");
   return `<div class="meta" style="margin-bottom:6px">${weekLabel()}</div>`+chips+`<div class="hint">👆 Tap a match for stats, form and team news · tap again to close</div>`+(list||`<div class="empty">No matches on this day.</div>`);
 }
 
@@ -570,7 +573,7 @@ function render(){
   scrollTo_("data-k",OPEN);
 }
 
-function scrollTo_(attr,open){const key=open||LAST;LAST=null;if(!key)return;
+function scrollTo_(attr,open){if(QUIET)return;const key=open||LAST;LAST=null;if(!key)return;
   try{const el=document.querySelector(`.fx[${attr}="${CSS.escape(key)}"]`);el&&el.scrollIntoView({block:open?"start":"nearest",behavior:"smooth"})}catch(e){}}
 async function boot(){
   try{const r=await fetch("data.json",{cache:"no-store"});DATA=await r.json();
@@ -579,9 +582,34 @@ async function boot(){
     try{BT=await (await fetch("backtest.json",{cache:"no-store"})).json()}catch(e){}
     buildModel();$("updated").textContent="Stats updated: "+DATA.updated}
   catch(e){$("msg").innerHTML='<div class="msg">Couldn\'t load the stats — try reloading.</div>';return}
-  render();
+  render();pollLive();
 }
 boot();
+
+// ---------- live scores (from our own live-score server; nothing shows if it's unreachable) ----------
+const LIVE_URL="https://footipedia-live.alvinkayemba.workers.dev/live";
+let LIVE=null,QUIET=false;
+const nrm=s=>String(s).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/&/g,"and")
+  .replace(/\b(fc|afc|cf|sc|ac|as|rc|bc|cd|ud|ssc|tsg|fsv|vfb|vfl|1\.|islands)\b/g,"").replace(/[^a-z0-9]/g,"");
+const NALIAS={cotedivoire:"ivorycoast",congodr:"drcongo",capeverde:"capeverde",caboverde:"capeverde",manutd:"manchesterunited",nottmforest:"nottinghamforest",wolves:"wolverhamptonwanderers",psg:"parissaintgermain"};
+const nn=s=>{const x=nrm(s);return NALIAS[x]||x};
+const sameTeam=(a,b)=>{const x=nn(a),y=nn(b);return x===y||(x.length>3&&y.length>3&&(x.includes(y)||y.includes(x)))};
+function liveFor(f){if(!LIVE||!LIVE.matches)return null;const ko=new Date(f.time).getTime();
+  return LIVE.matches.find(m=>m.lg===f.lg&&sameTeam(m.home,f.home)&&sameTeam(m.away,f.away))||
+         LIVE.matches.find(m=>m.lg===f.lg&&Math.abs(new Date(m.ko).getTime()-ko)<=15*60e3&&(sameTeam(m.home,f.home)||sameTeam(m.away,f.away)))||null}
+const LIVE_ST=new Set(["1H","HT","2H","ET","BT","P","LIVE","INT"]),DONE_ST=new Set(["FT","AET","PEN"]);
+function liveCell(f,t){const m=liveFor(f);if(!m||m.st==="NS"||m.st==="TBD")return `<span class="num" style="font-size:13px">${t}</span>`;
+  const sc=m.hg==null?"":`<b class="lsc">${m.hg}–${m.ag}</b>`;
+  if(LIVE_ST.has(m.st))return `<span class="lv">${sc}<span class="ltag">${m.st==="HT"?"HT":m.st==="P"?"PENS":(m.min||"")+(m.extra?"+"+m.extra:"")+"'"}</span></span>`;
+  if(DONE_ST.has(m.st))return `<span class="lv">${sc}<span class="ftag">${m.st==="FT"?"FT":m.st}</span></span>`;
+  return `<span class="lv"><span class="ftag">${m.st==="PST"?"Postp.":m.st==="CANC"?"Off":m.st}</span></span>`}
+function liveBanner(f){const m=liveFor(f);if(!m||m.st==="NS"||m.st==="TBD"||m.hg==null)return"";const on=LIVE_ST.has(m.st);
+  return `<div class="lbanner${on?" on":""}">${on?'<span class="dot"></span>LIVE '+(m.st==="HT"?"· Half-time":"· "+(m.min||"")+"'"):DONE_ST.has(m.st)?"Full time":esc(m.st)} <b>${esc(f.home)} ${m.hg}–${m.ag} ${esc(f.away)}</b></div>`}
+function needLive(){if(!LIVE_URL||!DATA)return false;const now=Date.now();
+  return DATA.fixtures.some(f=>{const k=new Date(f.time).getTime();return now>k-15*60e3&&now<k+3*36e5})}
+async function pollLive(){if(!needLive()||document.hidden===true)return;
+  try{const r=await fetch(LIVE_URL,{cache:"no-store"});const j=await r.json();if(j&&j.matches){LIVE=j;if(tab==="pred"){QUIET=true;render();QUIET=false}}}catch(e){}}
+setInterval(pollLive,60000);
 
 // ---------- install as an app ----------
 (function(){
