@@ -29,9 +29,12 @@ const json = (o, s=200) => new Response(JSON.stringify(o), {status:s, headers:CO
 const today = () => new Date().toISOString().slice(0,10);
 
 // ---------- API-Football ----------
+let RL = null;   // last rate-limit headers seen (for /debug)
 async function api(env, path){
   const r = await fetch("https://v3.football.api-sports.io/" + path, {headers:{"x-apisports-key": env.API_KEY}});
   const rem = r.headers.get("x-ratelimit-requests-remaining");
+  RL = {t:new Date().toISOString(), path:path.split("?")[0], status:r.status, day_limit:r.headers.get("x-ratelimit-requests-limit"), day_left:rem,
+        min_limit:r.headers.get("X-RateLimit-Limit"), min_left:r.headers.get("X-RateLimit-Remaining")};
   const j = await r.json();
   if (!r.ok || (j.errors && Object.keys(j.errors).length)) throw new Error(JSON.stringify(j.errors || r.status));
   return {list: j.response || [], remaining: rem == null ? null : +rem};
@@ -256,7 +259,8 @@ async function tick(env){
   const busy = anyActive(S.matches || []), m = Math.floor(Date.now() / 60e3);
   if (!busy || m % 4 === 1) await scanCups(env, S);
   if (!busy || m % 4 === 3) { try { const j = await dataJob(env); if (j) S.dataError = null; } catch (e) { S.dataError = String(e.message || e); } }
-  if (changed || all.length || (S.cupIds || []).length !== ids) await saveState(env, S);
+  if (RL) S.rl = RL;
+  if (changed || all.length || (S.cupIds || []).length !== ids || RL) await saveState(env, S);
 }
 
 export default {
@@ -307,7 +311,7 @@ export default {
     // Fallback if the minute job isn't running: refresh on request when the copy is stale.
     if (!S.matches || S.day !== today() || Date.now() > (S.next || 0) + 120000) ctx.waitUntil(tick(env));
     if (url.pathname === "/debug") { let n = 0; try { n = ((await env.LIVE.get("subs","json")) || []).length; } catch(e){}
-      return json({updated:S.updated, next:S.next, nextFull:S.nextFull, remaining:S.remaining, error:S.error, dataError:S.dataError||null, subscribers:n, matches:(S.matches||[]).length, events:S.events||[]}); }
+      return json({updated:S.updated, next:S.next, nextFull:S.nextFull, remaining:S.remaining, error:S.error, dataError:S.dataError||null, rl:S.rl||null, subscribers:n, matches:(S.matches||[]).length, events:S.events||[]}); }
     return json({updated: S.updated || null, matches: S.matches || [], events: (S.events || []).slice(0, 10), error: S.error || undefined});
   }
 };
