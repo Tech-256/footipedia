@@ -16,6 +16,7 @@ RHO = -0.1     # Dixon-Coles low-score correction
 MODEL_VERSION = 3
 EURO_H, EURO_A = 1.55, 1.20   # average home/away goals in UEFA club matches
 EST_ATT, EST_DEF = 1.15, 0.85  # assumed domestic rating for clubs from leagues we do not track
+CUP_H, CUP_A = 1.45, 1.15   # domestic cups: average home/away goals
 AF_HOME = 60   # AFCON qualifiers: home advantage in rating points
 AF_I = 25      # rating points at stake per match (FIFA's weight for qualifiers)
 
@@ -135,8 +136,22 @@ def euro_side(data, M, name, md):
     s = E["strength"].get(E["clubs"].get(name, ""), 0.7)
     return EST_ATT * s, EST_DEF / s, 0.0
 
+def cup_side(data, M, lg_cup, name, md):
+    E = data["euro"]
+    for lg, m in M.items():
+        t = m["teams"].get(name)
+        if t:
+            cut, _ = injury_cut(data, lg, name, md, t["r"]["GF"])
+            s = E["strength"][E["leagueCountry"][lg]]
+            return t["att"] * t["fA"] * s, t["de"] * t["fD"] / s, cut
+    s = data["cups"]["lower"].get(lg_cup, 0.65)   # a club we don't track: average side of a lower division
+    return s, 1 / s, 0.0
+
 def predict(data, M, f, AR=None):
     md = f["time"][:10]
+    if f["lg"].startswith("cup_"):
+        ah, dh, ch = cup_side(data, M, f["lg"], f["home"], md); aa, da, ca = cup_side(data, M, f["lg"], f["away"], md)
+        return grid(cl(CUP_H * ah * da * (1 - ch)), cl(CUP_A * aa * dh * (1 - ca)))
     if f["lg"] == "afcon_q":
         return afcon_predict(data.get("afcon"), AR, f) if AR else None
     if f["lg"].startswith("soccer_uefa"):
@@ -175,6 +190,8 @@ def run(data_p, results_p, preds_p):
         for x in R: allres.append((lg, x))
     for x in ((data.get("afcon") or {}).get("results") or []):
         if x.get("d"): allres.append(("afcon_q", x))
+    for x in ((data.get("cups") or {}).get("results") or []):
+        allres.append((x["lg"], x))
     for k, rec in preds["items"].items():
         if "res" in rec: continue
         for lg, x in allres:
