@@ -628,18 +628,24 @@ function liveFor(f){if(!LIVE||!LIVE.matches)return null;const ko=new Date(f.time
   return LIVE.matches.find(m=>m.lg===f.lg&&sameTeam(m.home,f.home)&&sameTeam(m.away,f.away))||
          LIVE.matches.find(m=>m.lg===f.lg&&Math.abs(new Date(m.ko).getTime()-ko)<=15*60e3&&(sameTeam(m.home,f.home)||sameTeam(m.away,f.away)))||null}
 const LIVE_ST=new Set(["1H","HT","2H","ET","BT","P","LIVE","INT"]),DONE_ST=new Set(["FT","AET","PEN"]);
+// Match clock: the server confirms the minute at each update (m.min at time m.at); count on from there.
+function liveMin(m){if(m.min==null)return"";const run=m.st==="1H"||m.st==="2H"||m.st==="ET";
+  let cur=m.min+(m.extra||0)+(run&&m.at?Math.max(0,Math.floor((Date.now()-m.at)/60000)):0);
+  const cap=m.st==="1H"?45:m.st==="2H"?90:m.st==="ET"?120:null;
+  return cap&&cur>cap?cap+"+"+(cur-cap):String(cur)}
 function liveCell(f,t){const m=liveFor(f);if(!m||m.st==="NS"||m.st==="TBD")return `<span class="num" style="font-size:13px">${t}</span>`;
   const sc=m.hg==null?"":`<b class="lsc">${m.hg}–${m.ag}</b>`;
-  if(LIVE_ST.has(m.st))return `<span class="lv">${sc}<span class="ltag">${m.st==="HT"?"HT":m.st==="P"?"PENS":(m.min||"")+(m.extra?"+"+m.extra:"")+"'"}</span></span>`;
+  if(LIVE_ST.has(m.st))return `<span class="lv">${sc}<span class="ltag">${m.st==="HT"?"HT":m.st==="P"?"PENS":liveMin(m)+"'"}</span></span>`;
   if(DONE_ST.has(m.st))return `<span class="lv">${sc}<span class="ftag">${m.st==="FT"?"FT":m.st}</span></span>`;
   return `<span class="lv"><span class="ftag">${m.st==="PST"?"Postp.":m.st==="CANC"?"Off":m.st}</span></span>`}
 function liveBanner(f){const m=liveFor(f);if(!m||m.st==="NS"||m.st==="TBD"||m.hg==null)return"";const on=LIVE_ST.has(m.st);
-  return `<div class="lbanner${on?" on":""}">${on?'<span class="dot"></span>LIVE '+(m.st==="HT"?"· Half-time":"· "+(m.min||"")+"'"):DONE_ST.has(m.st)?"Full time":esc(m.st)} <b>${esc(f.home)} ${m.hg}–${m.ag} ${esc(f.away)}</b></div>`}
+  return `<div class="lbanner${on?" on":""}">${on?'<span class="dot"></span>LIVE '+(m.st==="HT"?"· Half-time":"· "+liveMin(m)+"'"):DONE_ST.has(m.st)?"Full time":esc(m.st)} <b>${esc(f.home)} ${m.hg}–${m.ag} ${esc(f.away)}</b></div>`}
 function needLive(){if(!LIVE_URL||!DATA)return false;const now=Date.now();
   return DATA.fixtures.some(f=>{const k=new Date(f.time).getTime();return now>k-15*60e3&&now<k+3*36e5})}
 async function pollLive(){if(!needLive()||document.hidden===true)return;
   try{const r=await fetch(LIVE_URL,{cache:"no-store"});const j=await r.json();if(j&&j.matches){goalCheck(j);LIVE=j;if(tab==="pred"){QUIET=true;render();QUIET=false}}}catch(e){}}
 setInterval(pollLive,30000);
+setInterval(()=>{if(tab==="pred"&&LIVE&&LIVE.matches.some(m=>m.st==="1H"||m.st==="2H"||m.st==="ET")){QUIET=true;render();QUIET=false}},20000);
 
 // ---------- goal alerts (phone notifications) + in-app goal flash ----------
 const LIVE_BASE=LIVE_URL.replace(/\/live$/,"");
