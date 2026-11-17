@@ -170,8 +170,10 @@ def run(data_p, results_p, d):
         if k in keep: continue
         keep.add(k); fx.append({"lg": lg, "home": h, "away": a, "time": t.strftime("%Y-%m-%dT%H:%M:%SZ")})
     if fx:
-        have = {f["lg"] for f in fx}
-        old = [f for f in data["fixtures"] if f["lg"].startswith("cup_") or (f["lg"] not in have and datetime.fromisoformat(f["time"].replace("Z", "+00:00")) > now - timedelta(hours=2))]
+        # Replace a competition's fixtures only on the days the server sent fixtures for it; keep the rest
+        have = {(f["lg"], f["time"][:10]) for f in fx}
+        old = [f for f in data["fixtures"] if f["lg"].startswith("cup_") or ((f["lg"], f["time"][:10]) not in have
+               and datetime.fromisoformat(f["time"].replace("Z", "+00:00")) > now - timedelta(hours=2))]
         data["fixtures"] = sorted(old + fx, key=lambda f: f["time"])
     else: report.append("fixtures: none received, kept old")
 
