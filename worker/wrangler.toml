@@ -1,4 +1,4 @@
-# Footipedia live-score server (Cloudflare Worker). Deployed automatically by Cloudflare Workers Builds.
+# Footipedia live-score server (Cloudflare Worker). Deployed automatically by Cloudflare Workers Builds from this folder.
 # The API key is a secret stored in Cloudflare (API_KEY) and is never in this repository.
 name = "footipedia-live"
 main = "src/index.js"
