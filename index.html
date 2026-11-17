@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Footipedia</title>
+<meta name="description" content="Footipedia: free football predictions, stats, form, injuries and team news for 12 European competitions.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect x='4' y='4' width='112' height='112' rx='26' fill='%233ddc97'/%3E%3Cpath d='M36 94 L36 28 L90 28' fill='none' stroke='%230f1115' stroke-width='11' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M36 61 L66 61' fill='none' stroke='%230f1115' stroke-width='11' stroke-linecap='round'/%3E%3Ccircle cx='82' cy='61' r='8' fill='%230f1115'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1115;--card:#171a21;--line:#262b36;--fg:#e8eaf0;--mut:#8a93a6;--acc:#3ddc97;--warn:#ffb547;--bad:#ff6b6b;--blue:#6aa8ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{padding:18px 16px 8px;max-width:1000px;margin:auto}
+h1{margin:0;font-size:22px}
+h3{font-size:15px;margin:16px 0 4px}
+.sub{color:var(--mut);font-size:13px;margin-top:4px}
+main{max-width:1000px;margin:auto;padding:0 16px 40px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px}
+select,button{font:inherit;color:var(--fg);background:#0f1218;border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%}
+button{cursor:pointer;background:#222836;width:auto}
+.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin:14px 0 4px}
+.tabs button{white-space:nowrap}
+.tabs button.on{background:var(--blue);color:#081325;border-color:var(--blue);font-weight:600}
+.pill{display:inline-block;font-size:11px;padding:2px 7px;border-radius:99px;background:#232a38;color:var(--mut)}
+.pill.hi{background:rgba(61,220,151,.15);color:var(--acc)}
+.pill.md{background:rgba(106,168,255,.15);color:var(--blue)}
+.pill.lo{background:rgba(255,181,71,.15);color:var(--warn)}
+.ev{border-top:1px solid var(--line);padding:14px 0}
+.ev:first-child{border-top:0}
+.evh{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.evt{font-weight:600}
+.meta{color:var(--mut);font-size:12px}
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
+th,td{text-align:left;padding:6px 4px;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-weight:500;font-size:12px}
+.num{font-variant-numeric:tabular-nums}
+.best{font-weight:700}
+.empty{color:var(--mut);text-align:center;padding:24px}
+.note{font-size:12px;color:var(--mut)}
+.msg{padding:10px;border-radius:8px;margin-top:10px;font-size:13px;background:rgba(255,107,107,.12);color:var(--bad)}
+.box{margin-top:8px;font-size:13px;background:#11151c;border-radius:8px;padding:8px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.stats div{background:#11151c;border-radius:8px;padding:8px;font-size:12px}
+.tn{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.tn div{background:#11151c;border-radius:8px;padding:8px;font-size:12px;line-height:1.5}
+.st{display:inline-block;min-width:62px;font-size:11px;font-weight:600;border-radius:6px;padding:1px 6px;margin-right:6px;text-align:center}
+.st.out{background:rgba(255,107,107,.15);color:var(--bad)}.st.sus{background:rgba(255,107,107,.15);color:var(--bad)}
+.st.dbt{background:rgba(255,181,71,.15);color:var(--warn)}.st.back{background:rgba(61,220,151,.15);color:var(--acc)}
+.prow{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}
+.bdg{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font:700 9px/1 'Space Grotesk',system-ui,sans-serif;letter-spacing:.3px;flex:none;vertical-align:middle;margin-right:6px}
+.bdg.sm{width:22px;height:22px;font-size:7.5px;margin-right:5px}
+.tm{display:inline-flex;align-items:center}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px}
+.chip{flex:none;padding:7px 12px;border-radius:99px;font-size:13px}
+.chip.on{background:var(--acc);color:#06140d;border-color:var(--acc);font-weight:700}
+.lgh{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;margin:14px 0 4px}
+.fx{display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:center;width:100%;text-align:left;background:#11151c;border:1px solid var(--line);border-radius:10px;padding:10px;margin:6px 0;min-height:56px}
+.fx.open{border-color:var(--blue);border-bottom-left-radius:0;border-bottom-right-radius:0;margin-bottom:0}
+.fx{grid-template-columns:48px 1fr auto 18px;cursor:pointer}
+.fx.ij{grid-template-columns:1fr auto 18px}
+.fx .pk .st{margin:2px 0 2px 4px}
+.chev{font-size:18px;color:var(--mut);transition:transform .2s;line-height:1;justify-self:end}
+.chev.up{transform:rotate(180deg);color:var(--blue)}
+.hint{font-size:12px;color:var(--mut);background:#11151c;border:1px dashed var(--line);border-radius:8px;padding:6px 10px;margin:6px 0 4px}
+.tapme{display:inline-block;font-size:12px;font-weight:700;color:#06140d;background:var(--acc);border-radius:99px;padding:3px 10px;margin:-2px 0 6px 10px;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:translateY(0)}50%{opacity:.6;transform:translateY(-2px)}}
+.seg{display:flex;background:#11151c;border:1px solid var(--line);border-radius:12px;padding:3px;margin:4px 0 10px}
+.seg button{flex:1;border:0;background:none;border-radius:9px;padding:9px 6px;font-size:13px;color:var(--mut)}
+.seg button span{opacity:.7;font-size:12px}
+.seg button.on{background:var(--card);color:var(--fg);font-weight:700;box-shadow:0 0 0 1px var(--line)}
+.rb{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;background:#11151c;border:1px solid var(--line);border-radius:10px;padding:10px;margin:6px 0}
+.rbm{min-width:0}.rbm .meta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rbr{text-align:right;max-width:110px}.rbr .meta{font-size:11px}
+.foot{margin:28px 0 20px;padding-top:14px;border-top:1px solid var(--line);font-size:11px;line-height:1.5;color:var(--mut)}.foot a{color:var(--blue)}.foot p{margin:0 0 8px}
+.closebar{display:block;width:100%;margin-top:10px;padding:10px;border-radius:8px;font-size:13px;color:var(--blue);background:#11151c;border:1px solid var(--line)}
+.fx .tm2{display:flex;flex-direction:column;gap:5px;font-size:14px;min-width:0}
+.fx .tm2 span.tm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx .pk{text-align:right;font-size:12px;color:var(--mut)}
+.fx .pk b{display:block;font-size:16px;color:var(--fg)}
+.fxd{border:1px solid var(--blue);border-top:0;border-radius:0 0 10px 10px;margin:0 0 8px;padding:4px 10px 10px;background:var(--card)}
+.fxd .ev{border-top:0}
+a{color:var(--blue)}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;align-items:center;gap:12px">
+    <svg role="img" aria-label="Footipedia logo" width="44" height="44" viewBox="0 0 120 120" style="flex:none">
+      <rect x="4" y="4" width="112" height="112" rx="26" fill="#3ddc97"></rect>
+      <path d="M36 94 L36 28 L90 28" fill="none" stroke="#0f1115" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"></path>
+      <path d="M36 61 L66 61" fill="none" stroke="#0f1115" stroke-width="11" stroke-linecap="round"></path>
+      <circle cx="82" cy="61" r="8" fill="#0f1115"></circle>
+    </svg>
+    <div>
+      <h1 style="font-family:'Space Grotesk',system-ui,sans-serif;font-weight:700;font-size:24px;letter-spacing:2px;line-height:1">FOOTIPEDIA</h1>
+      <div style="font-family:'Space Grotesk',system-ui,sans-serif;font-weight:500;font-size:11px;letter-spacing:3px;color:var(--mut);margin-top:4px">PREDICTIONS · STATS · TEAM NEWS</div>
+    </div>
+  </div>
+  <div class="sub" style="margin-top:10px">Match predictions built only from this season's results: goals scored and conceded, home and away.</div>
+</header>
+<main>
+
+<div class="card">
+  <div class="grid">
+    <div><label>League</label>
+      <select id="lg">
+        <option value="all">All leagues</option>
+        <option value="soccer_epl">Premier League</option>
+        <option value="soccer_efl_champ">Championship</option>
+        <option value="soccer_spain_la_liga">La Liga</option>
+        <option value="soccer_italy_serie_a">Serie A</option>
+        <option value="soccer_germany_bundesliga">Bundesliga</option>
+        <option value="soccer_france_ligue_one">Ligue 1</option>
+        <option value="soccer_netherlands_eredivisie">Eredivisie</option>
+        <option value="soccer_portugal_primeira_liga">Primeira Liga</option>
+        <option value="soccer_spl">Scottish Premiership</option>
+        <option value="soccer_uefa_champs_league">Champions League</option>
+        <option value="soccer_uefa_europa_league">Europa League</option>
+        <option value="soccer_uefa_europa_conference_league">Conference League</option>
+      </select></div>
+    <div><label>Matches</label>
+      <select id="week"><option value="this" selected>This week</option><option value="next">Next week</option><option value="all">All upcoming</option></select></div>
+  </div>
+  <div class="meta" id="updated" style="margin-top:10px"></div>
+  <div id="msg"></div>
+</div>
+
+<div class="tabs" id="tabs">
+  <button data-t="pred" class="on">🔮 Predictions</button>
+  <button data-t="inj">🏥 Injuries</button>
+  <button data-t="table">📊 Tables</button>
+  <button data-t="fpl">⚽ FPL picks</button>
+  <button data-t="track">📒 Track record</button>
+  <button data-t="how">❓ How it works</button>
+</div>
+<div class="card" id="out"><div class="empty">Loading…</div></div>
+<footer class="foot">
+  <p><b>Footipedia</b> is a free stats project for information and entertainment. Predictions are probabilities, not certainties, and are not betting advice. If you choose to bet, you must be 18+. Bet only what you can afford to lose. Help: <a href="https://www.begambleaware.org" target="_blank" rel="noopener">BeGambleAware.org</a> · 0808 8020 133.</p>
+  <p>Data: results from football-data.co.uk, fixtures from The Odds API, tables, injuries and transfers compiled from public sports news. Not affiliated with any club, league or competition. Team names are used for identification only.</p>
+</footer>
+
+<p class="note">Predictions are statistical estimates, not certainties. Upsets happen every week.</p>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+let DATA=null, RES={leagues:{}}, PREDS={items:{}}, BT=null, tab="pred", DAY=null, OPEN=null, ILG=null, IOPEN=null, IVIEW="miss", IBL="all", LAST=null, TAPPED=!!(window.localStorage&&(()=>{try{return localStorage.getItem("fp_tapped")}catch(e){return null}})());
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+$("lg").value=store.get("lg")||"all";
+$("lg").onchange=()=>{store.set("lg",$("lg").value);DAY=null;OPEN=null;IOPEN=null;render()};
+$("week").onchange=()=>{DAY=null;OPEN=null;render()};
+$("out").addEventListener("click",e=>{
+  const seen=()=>{if(!TAPPED){TAPPED=true;try{localStorage.setItem("fp_tapped","1")}catch(_){}}};
+  if(tab==="pred"){const d=e.target.closest("[data-day]");if(d){DAY=d.dataset.day;OPEN=null;render();return}
+    const k=e.target.closest("[data-k]");if(k){seen();LAST=k.dataset.k;OPEN=OPEN===LAST?null:LAST;render()}}
+  else if(tab==="inj"){const v=e.target.closest("[data-iv]");if(v){IVIEW=v.dataset.iv;IOPEN=null;render();return}
+    const bl=e.target.closest("[data-ibl]");if(bl){IBL=bl.dataset.ibl;render();return}
+    const c=e.target.closest("[data-ilg]");if(c){ILG=c.dataset.ilg;IOPEN=null;render();return}
+    const k=e.target.closest("[data-i]");if(k){seen();LAST=k.dataset.i;IOPEN=IOPEN===LAST?null:LAST;render()}}
+});
+document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;document.querySelectorAll("#tabs button").forEach(x=>x.classList.toggle("on",x===b));render()});
+
+const pct=x=>(x*100).toFixed(0)+"%";
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const when=t=>{const d=new Date(t);return d.toLocaleString([], {weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})};
+
+const BADGE={"Arsenal":["ARS","#EF0107","#fff","#fff"],"Brighton & Hove Albion":["BHA","#0057B8","#fff","#fff"],"Manchester City":["MCI","#6CABDD","#1C2C5B","#fff"],"Liverpool":["LIV","#C8102E","#fff","#fff"],"Chelsea":["CHE","#034694","#fff","#fff"],"Everton":["EVE","#003399","#fff","#fff"],"Bournemouth":["BOU","#DA291C","#fff","#111"],"Brentford":["BRE","#E30613","#fff","#fff"],"Leeds United":["LEE","#fff","#1D428A","#FFCD00"],"Aston Villa":["AVL","#670E36","#95BFE5","#95BFE5"],"Tottenham Hotspur":["TOT","#fff","#132257","#132257"],"Newcastle United":["NEW","#241F20","#fff","#fff"],"Hull City":["HUL","#F5A12D","#111","#111"],"Ipswich Town":["IPS","#3A64A3","#fff","#fff"],"Fulham":["FUL","#fff","#111","#111"],"Nottingham Forest":["NFO","#DD0000","#fff","#fff"],"Coventry City":["COV","#59CBE8","#0f1115","#fff"],"Manchester United":["MUN","#DA291C","#FBE122","#111"],"Sunderland":["SUN","#EB172B","#fff","#fff"],"Crystal Palace":["CRY","#1B458F","#fff","#C4122E"],"Birmingham City":["BIR","#0000FF","#fff","#fff"],"Middlesbrough":["MID","#E21A23","#fff","#fff"],"Stoke City":["STK","#E03A3E","#fff","#fff"],"Wolverhampton Wanderers":["WOL","#FDB913","#231F20","#231F20"],"West Bromwich Albion":["WBA","#122F67","#fff","#fff"],"Swansea City":["SWA","#fff","#121212","#121212"],"Southampton":["SOU","#D71920","#fff","#fff"],"Queens Park Rangers":["QPR","#1D5BA4","#fff","#fff"],"West Ham United":["WHU","#7A263A","#1BB1E7","#1BB1E7"],"Sheffield United":["SHU","#EE2737","#fff","#111"],"Portsmouth":["POR","#001489","#fff","#fff"],"Norwich City":["NOR","#FFF200","#00A650","#00A650"],"Blackburn Rovers":["BLB","#009EE0","#fff","#fff"],"Cardiff City":["CAR","#0070B5","#fff","#fff"],"Wrexham":["WRE","#D71920","#fff","#fff"],"Millwall":["MIL","#001D5E","#fff","#fff"],"Bristol City":["BRC","#E21B23","#fff","#fff"],"Bolton Wanderers":["BOL","#fff","#263C7E","#263C7E"],"Charlton Athletic":["CHA","#D4021D","#fff","#fff"],"Watford":["WAT","#FBEE23","#C8102E","#111"],"Lincoln City":["LIN","#E2231A","#fff","#111"],"Burnley":["BUR","#6C1D45","#99D6EA","#99D6EA"],"Derby County":["DER","#fff","#111","#111"],"Preston North End":["PNE","#fff","#002F6C","#002F6C"],"Barcelona":["BAR","#A50044","#EDBB00","#004D98"],"Real Madrid":["RMA","#fff","#00529F","#FEBE10"],"Atletico Madrid":["ATM","#CB3524","#fff","#272E61"],"Real Betis":["BET","#00954C","#fff","#fff"],"Real Sociedad":["RSO","#0067B1","#fff","#fff"],"Sevilla":["SEV","#fff","#D81E05","#D81E05"],"Athletic Bilbao":["ATH","#EE2523","#fff","#fff"],"Villarreal":["VIL","#FFE667","#005187","#005187"],"Deportivo La Coruna":["DEP","#0068B3","#fff","#fff"],"Racing de Santander":["RAC","#fff","#00843D","#00843D"],"Celta Vigo":["CEL","#8AC3EE","#0f1115","#fff"],"Alaves":["ALA","#0761AF","#fff","#fff"],"Espanyol":["ESP","#007FC8","#fff","#fff"],"Rayo Vallecano":["RAY","#fff","#E53027","#E53027"],"Getafe":["GET","#005999","#fff","#fff"],"Osasuna":["OSA","#D91A21","#fff","#0A346F"],"Levante":["LEV","#B4053F","#fff","#004D98"],"Elche":["ELC","#fff","#05642C","#05642C"],"Valencia":["VAL","#fff","#111","#EE3524"],"Malaga":["MAL","#fff","#0076BD","#0076BD"],"Lazio":["LAZ","#87D8F7","#15366F","#fff"],"Inter Milan":["INT","#010E80","#fff","#111"],"Roma":["ROM","#8E1F2F","#F0BC42","#F0BC42"],"AC Milan":["MIL","#FB090B","#111","#111"],"Como":["COM","#003DA5","#fff","#fff"],"Frosinone":["FRO","#FFDA00","#0047AB","#0047AB"],"Juventus":["JUV","#111","#fff","#fff"],"Bologna":["BOL","#1A2F48","#fff","#A21C26"],"Cagliari":["CAG","#002350","#fff","#A61B2B"],"Napoli":["NAP","#12A0D7","#fff","#fff"],"Torino":["TOR","#8A1E03","#fff","#fff"],"Atalanta BC":["ATA","#1E71B8","#fff","#111"],"Genoa":["GEN","#AD1919","#fff","#002350"],"Lecce":["LEC","#FFE200","#C8102E","#C8102E"],"Fiorentina":["FIO","#482E92","#fff","#fff"],"Parma":["PAR","#fff","#1B4094","#FFD200"],"Sassuolo":["SAS","#00A752","#fff","#111"],"Monza":["MON","#E30613","#fff","#fff"],"Venezia":["VEN","#111","#F58025","#00994C"],"Udinese":["UDI","#fff","#111","#111"],"Bayern Munich":["FCB","#DC052D","#fff","#fff"],"Borussia Dortmund":["BVB","#FDE100","#111","#111"],"Freiburg":["SCF","#E2001A","#fff","#111"],"RB Leipzig":["RBL","#fff","#DD0741","#001F47"],"Bayer Leverkusen":["B04","#E32221","#fff","#111"],"Werder Bremen":["SVW","#1D9053","#fff","#fff"],"Elversberg":["SVE","#111","#fff","#fff"],"Stuttgart":["VFB","#fff","#E32219","#E32219"],"Hoffenheim":["TSG","#1C63B7","#fff","#fff"],"Eintracht Frankfurt":["SGE","#111","#fff","#E1000F"],"Hamburger SV":["HSV","#fff","#0A3F86","#0A3F86"],"Mainz 05":["M05","#C3141E","#fff","#fff"],"SC Paderborn":["SCP","#005CA9","#fff","#111"],"Augsburg":["FCA","#BA3733","#fff","#46714D"],"FC Koln":["KOE","#fff","#ED1C24","#ED1C24"],"Union Berlin":["FCU","#EB1923","#fff","#fff"],"Schalke 04":["S04","#004D9D","#fff","#fff"],"Borussia Monchengladbach":["BMG","#fff","#111","#00A54F"],"Paris Saint-Germain":["PSG","#004170","#fff","#DA291C"],"Lille":["LIL","#E01E13","#fff","#20325F"],"Paris FC":["PFC","#002F6C","#fff","#7AB2E3"],"Marseille":["MAR","#fff","#2FAEE0","#2FAEE0"],"Lyon":["LYO","#fff","#DA0812","#14387F"],"Nice":["NIC","#CE0E2D","#fff","#111"],"Monaco":["ASM","#E51B22","#fff","#fff"],"Rennes":["REN","#E13327","#fff","#111"],"Brest":["BRE","#E30613","#fff","#fff"],"Lorient":["LOR","#F58113","#111","#111"],"Lens":["LEN","#FFD700","#C8102E","#C8102E"],"Toulouse":["TOU","#5D2F87","#fff","#fff"],"Strasbourg":["STR","#009FE3","#fff","#fff"],"Auxerre":["AUX","#fff","#0B4DA2","#0B4DA2"],"Le Mans":["LMS","#D50032","#FFD100","#111"],"Angers":["ANG","#fff","#111","#111"],"Troyes":["TRO","#005BAA","#fff","#fff"],"Le Havre":["HAV","#7DB9E8","#0A2240","#0A2240"],"PSV Eindhoven":["PSV","#ED1C24","#fff","#fff"],"Feyenoord":["FEY","#fff","#E30613","#111"],"Ajax":["AJA","#fff","#D2122E","#D2122E"],"FC Twente":["TWE","#E30613","#fff","#fff"],"AZ Alkmaar":["AZ","#E30613","#fff","#fff"],"Heerenveen":["HEE","#0055A4","#fff","#fff"],"Fortuna Sittard":["FOR","#FFD700","#111","#00843D"],"Go Ahead Eagles":["GAE","#E30613","#FFD700","#FFD700"],"Groningen":["GRO","#00843D","#fff","#fff"],"Cambuur":["CAM","#FFD700","#0055A4","#0055A4"],"NEC":["NEC","#E30613","#00843D","#111"],"Sparta Rotterdam":["SPA","#E30613","#fff","#fff"],"PEC Zwolle":["PEC","#0055A4","#fff","#fff"],"FC Utrecht":["UTR","#fff","#E30613","#E30613"],"SBV Excelsior":["EXC","#111","#E30613","#E30613"],"Telstar":["TEL","#fff","#111","#111"],"ADO Den Haag":["ADO","#FFD700","#00843D","#00843D"],"Willem II":["WIL","#E30613","#fff","#0055A4"],"Porto":["POR","#003893","#fff","#fff"],"Benfica":["BEN","#E30613","#fff","#fff"],"Sporting Lisbon":["SCP","#00805B","#fff","#fff"],"Santa Clara":["SCL","#E30613","#fff","#fff"],"Arouca":["ARO","#FFD700","#0055A4","#0055A4"],"Academico de Viseu":["VIS","#111","#fff","#fff"],"Gil Vicente":["GIL","#E30613","#fff","#0055A4"],"Braga":["BRA","#E30613","#fff","#fff"],"Moreirense":["MOR","#00843D","#fff","#fff"],"Famalicao":["FAM","#0055A4","#fff","#fff"],"Alverca":["ALV","#E30613","#fff","#0055A4"],"Estrela Amadora":["EST","#E30613","#fff","#00843D"],"Nacional":["NAC","#111","#fff","#fff"],"Vitoria de Guimaraes":["VSC","#fff","#111","#111"],"Maritimo":["MAR","#00843D","#E30613","#E30613"],"Casa Pia":["CPI","#111","#fff","#fff"],"Rio Ave":["RAV","#00843D","#fff","#fff"],"Estoril Praia":["ESP","#FFD700","#0055A4","#0055A4"],"Celtic":["CEL","#018749","#fff","#fff"],"Rangers":["RAN","#1B458F","#fff","#fff"],"Falkirk":["FAL","#002F6C","#fff","#fff"],"Hearts":["HEA","#8B1C2B","#fff","#fff"],"Dundee":["DUN","#002F6C","#fff","#fff"],"Dundee United":["DDU","#F47920","#111","#111"],"St Johnstone":["STJ","#0055A4","#fff","#fff"],"St Mirren":["STM","#111","#fff","#fff"],"Motherwell":["MOT","#F7B500","#7A1E2C","#7A1E2C"],"Hibernian":["HIB","#00843D","#fff","#fff"],"Aberdeen":["ABE","#D20A11","#fff","#fff"],"Kilmarnock":["KIL","#0055A4","#fff","#fff"]};
+function badge(t,sm){const b=BADGE[t];if(!b){const c=String(t).replace(/[^A-Za-z]/g,"").slice(0,3).toUpperCase();return `<span class="bdg${sm?" sm":""}" aria-hidden="true" style="background:#232a38;color:#e8eaf0;box-shadow:inset 0 0 0 2px #3a4152">${c}</span>`}
+  return `<span class="bdg${sm?" sm":""}" aria-hidden="true" style="background:${b[1]};color:${b[2]};box-shadow:inset 0 0 0 2px ${b[3]}">${b[0]}</span>`}
+const tm=(t,sm)=>`<span class="tm">${badge(t,sm)}${esc(t)}</span>`;
+
+// ---------- model ----------
+// Attack/defence strengths from goals scored and conceded, split home/away, shrunk toward
+// the league average early in the season (K = games of "average" added to every team).
+const K=4;
+const MODEL={};
+function buildModel(){
+  for(const [lg,L] of Object.entries(DATA.leagues)){
+    const T=L.table,sum=f=>T.reduce((a,r)=>a+r[f],0);
+    const H=sum("hGF")/sum("hP"), A=sum("aGF")/sum("aP"), M=(sum("GF"))/sum("P");
+    const teams={};
+    T.forEach((r,i)=>{
+      const sh=(g,p,avg)=>((g+K*avg)/(p+K))/avg;
+      const att=sh(r.GF,r.P,M), def=sh(r.GA,r.P,M);
+      teams[r.team]={r,pos:i+1,
+        attH:(sh(r.hGF,r.hP,H)+att)/2, defH:(sh(r.hGA,r.hP,A)+def)/2,
+        attA:(sh(r.aGF,r.aP,A)+att)/2, defA:(sh(r.aGA,r.aP,H)+def)/2, att, def};
+    });
+    // recent form: last 6 league games vs the team's season average (nudges attack/defence up to ±15%)
+    const R=(RES.leagues||{})[lg]||[];
+    for(const [t,tmx] of Object.entries(teams)){
+      const games=R.filter(x=>x.h===t||x.a===t).sort((x,y)=>x.d<y.d?-1:x.d>y.d?1:0),last=games.slice(-6);
+      tmx.form=games.slice(-5).map(x=>{const gf=x.h===t?x.hg:x.ag,ga=x.h===t?x.ag:x.hg;return {r:gf>ga?"W":gf<ga?"L":"D",s:`${x.hg}-${x.ag}`,o:x.h===t?x.a:x.h,ha:x.h===t?"H":"A",d:x.d}});
+      if(last.length){const gf=last.reduce((a,x)=>a+(x.h===t?x.hg:x.ag),0),ga=last.reduce((a,x)=>a+(x.h===t?x.ag:x.hg),0),n=last.length;
+        const ra=((gf+3*M)/(n+3))/M,rd=((ga+3*M)/(n+3))/M;
+        tmx.fA=Math.min(1.15,Math.max(0.85,0.75+0.25*ra/tmx.att));tmx.fD=Math.min(1.15,Math.max(0.85,0.75+0.25*rd/tmx.def));}
+      else{tmx.fA=1;tmx.fD=1}
+    }
+    MODEL[lg]={H,A,M,teams};
+  }
+}
+const fact=[1,1,2,6,24,120,720,5040,40320];
+const pois=(k,l)=>Math.exp(-l)*Math.pow(l,k)/fact[k];
+const isEuro=lg=>String(lg).startsWith("soccer_uefa");
+const lgName=k=>(DATA.leagues[k]&&DATA.leagues[k].name)||((DATA.euro||{}).names||{})[k]||k;
+// UEFA matches: each club's domestic attack/defence (with form) scaled by its league's strength, so clubs
+// from different leagues share one scale. Clubs from leagues we don't track get an estimated rating.
+function euroSide(name,md){
+  const E=DATA.euro;
+  for(const [lg,m] of Object.entries(MODEL)){const t=m.teams[name];
+    if(t){const ic=injuryCut(lg,name,md,t.r.GF),s=E.strength[E.leagueCountry[lg]];return {t,lg,att:t.att*t.fA*s,def:t.def*t.fD/s,ic,s,est:false}}}
+  const c=E.clubs[name]||"",s=E.strength[c]??0.7;
+  return {t:null,lg:null,att:1.15*s,def:0.85/s,ic:{cut:0,miss:0,who:[]},s,est:true,country:c};
+}
+function predict(f){
+  if(isEuro(f.lg)){const md=String(f.time).slice(0,10),H=euroSide(f.home,md),A=euroSide(f.away,md),clamp=x=>Math.min(4,Math.max(0.2,x));
+    const lh=clamp(1.55*H.att*A.def*(1-H.ic.cut)),la=clamp(1.20*A.att*H.def*(1-A.ic.cut));
+    return {...gridOut(lh,la),euro:true,H,A,h:H.t,a:A.t,ih:H.ic,ia:A.ic};}
+  const m=MODEL[f.lg],h=m.teams[f.home],a=m.teams[f.away];if(!h||!a)return null;
+  const clamp=x=>Math.min(4,Math.max(0.2,x));
+  const md=String(f.time).slice(0,10),ih=injuryCut(f.lg,f.home,md,h.r.GF),ia=injuryCut(f.lg,f.away,md,a.r.GF);
+  const lh0=m.H*h.attH*a.defA, la0=m.A*a.attA*h.defH;
+  const lh=clamp(lh0*h.fA*a.fD*(1-ih.cut)), la=clamp(la0*a.fA*h.fD*(1-ia.cut));
+  return {...gridOut(lh,la),h,a,lh0,la0,ih,ia};
+}
+// Poisson grid with Dixon-Coles low-score correction (draws are a bit more common than plain Poisson says)
+function gridOut(lh,la){
+  const rho=-0.1, tau=(i,j)=>i===0&&j===0?1-lh*la*rho:i===0&&j===1?1+lh*rho:i===1&&j===0?1+la*rho:i===1&&j===1?1-rho:1;
+  let g=[],tot=0;for(let i=0;i<=8;i++)for(let j=0;j<=8;j++){const p=pois(i,lh)*pois(j,la)*tau(i,j);g.push([i,j,p]);tot+=p}
+  let pH=0,pD=0,pA=0,o25=0,btts=0,csH=0,csA=0;
+  g.forEach(s=>{s[2]/=tot;const [i,j,p]=s;if(i>j)pH+=p;else if(i===j)pD+=p;else pA+=p;if(i+j>2)o25+=p;if(i&&j)btts+=p;if(j===0)csH+=p;if(i===0)csA+=p});
+  g.sort((x,y)=>y[2]-x[2]);
+  const opts=[["home",pH],["draw",pD],["away",pA]].sort((x,y)=>y[1]-x[1]);
+  return {lh,la,pH,pD,pA,o25,btts,csH,csA,top:g.slice(0,3),pick:opts[0][0],conf:opts[0][1]};
+}
+
+// ---------- weeks (Tue → Mon so Monday-night games count with the weekend) ----------
+function weekBounds(){const n=new Date(),d=new Date(n.getFullYear(),n.getMonth(),n.getDate());d.setDate(d.getDate()-((d.getDay()+5)%7));const e=new Date(d);e.setDate(e.getDate()+7);const e2=new Date(e);e2.setDate(e2.getDate()+7);return {s:d,e,e2}}
+function inWeek(f){const w=$("week").value,t=new Date(f.time),{s,e,e2}=weekBounds();if(t<new Date(Date.now()-2*36e5))return false;if(w==="all")return true;return w==="this"?(t>=s&&t<e):(t>=e&&t<e2)}
+function weekLabel(){const w=$("week").value;if(w==="all")return"All upcoming";const {s,e,e2}=weekBounds(),a=w==="this"?s:e,b=new Date((w==="this"?e:e2)-864e5),f=d=>d.toLocaleDateString([], {day:"numeric",month:"short"});return `${f(a)} – ${f(b)}`}
+function fixtures(){const lg=$("lg").value;return DATA.fixtures.filter(f=>(lg==="all"||f.lg===lg)&&inWeek(f)).sort((x,y)=>new Date(x.time)-new Date(y.time))}
+
+
+// ---------- injuries & suspensions ----------
+const POS={G:"GK",D:"DEF",M:"MID",F:"FWD"};
+const dstr=t=>new Date(t).toISOString().slice(0,10);
+const fmtD=s=>new Date(s+"T12:00:00Z").toLocaleDateString([], {day:"numeric",month:"short"});
+function status(x,matchDay){
+  if(x.t==="suspension"){if(x.r&&x.r<matchDay)return {k:"back",l:"Back",n:"ban over"};if(x.r===matchDay)return {k:"dbt",l:"Doubt",n:"ban may end match day"};return {k:"sus",l:"Banned",n:x.r?"until "+fmtD(x.r):x.i}}
+  if(!x.r)return {k:"out",l:"Out",n:x.i+" · no return date"};
+  if(x.r<matchDay)return {k:"back",l:"Back",n:x.i+" · due back "+fmtD(x.r)};
+  if(x.r===matchDay)return {k:"dbt",l:"Doubt",n:x.i+" · due back match day"};
+  return {k:"out",l:"Out",n:x.i+" · back "+fmtD(x.r)};
+}
+// Missing players' share of the team's goals + half its assists cuts expected goals (60% of the share, max 30%),
+// because replacements score some of those goals.
+function injuryCut(lg,team,md,gf){
+  const list=((DATA.injuries||{})[lg]||{})[team]||[];let miss=0;const who=[];
+  list.forEach(x=>{const s=status(x,md).k,w=(s==="out"||s==="sus")?1:s==="dbt"?0.5:0,inv=(x.g||0)+0.5*(x.as||0);if(w&&inv){miss+=w*inv;who.push(x)}});
+  return {cut:Math.min(0.3,0.6*miss/Math.max(gf,1)),miss,who};
+}
+function teamNews(lg,team,time){
+  const list=((DATA.injuries||{})[lg]||{})[team]||[],md=dstr(time),r={out:[],dbt:[],back:[]};
+  list.forEach(x=>{const s=status(x,md);(s.k==="back"?r.back:s.k==="dbt"?r.dbt:r.out).push({...x,s})});return r;
+}
+const nm=x=>`${esc(x.p)}${POS[x.pos]?` <span class="meta">${POS[x.pos]}</span>`:""}${x.n?` <span class="meta">(${esc(x.n)})</span>`:""}`;
+function newsBox(team,n){
+  if(!n.out.length&&!n.dbt.length&&!n.back.length)return `<div><b>${tm(team,1)}</b><br><span class="meta">No injuries or bans reported</span></div>`;
+  const line=(arr,cls,lab)=>arr.length?`<div style="margin-top:3px"><span class="st ${cls}">${lab} ${arr.length}</span>${arr.map(nm).join(", ")}</div>`:"";
+  return `<div><b>${tm(team,1)}</b>${line(n.out,"out","Out")}${line(n.dbt,"dbt","Doubt")}${line(n.back,"back","Back")}</div>`;
+}
+function injRows(k,teams,I,mdOf,nextTxt){
+  return teams.map((t,ix)=>{const md=mdOf(t),arr=I[t]||[],key="inj|"+k+"|"+t,open=IOPEN===key;
+    let o=0,d=0,bk=0;arr.forEach(x=>{const s=status(x,md).k;if(s==="out"||s==="sus")o++;else if(s==="dbt")d++;else bk++});
+    const cnt=(o?`<span class="st out" style="min-width:0">${o} out</span>`:"")+(d?`<span class="st dbt" style="min-width:0">${d} doubt</span>`:"")+(!o&&!d&&bk?`<span class="st back" style="min-width:0">${bk} back</span>`:"");
+    return `<button class="fx ij${open?" open":""}" data-i="${esc(key)}" aria-expanded="${open}">
+      <span class="tm2">${tm(t,1)}<span class="meta" style="font-size:12px">${nextTxt(t)}</span></span>
+      <span class="pk">${cnt}</span>${chev(open)}</button>`+(!TAPPED&&ix===0&&!IOPEN?hintTag():"")+
+      (open?`<div class="fxd">`+arr.map(x=>{const s=status(x,md);return `<div class="prow"><span><span class="st ${s.k}">${s.l}</span>${nm(x)}</span><span class="meta" style="text-align:right">${esc(s.n)}</span></div>`}).join("")+closeBar("data-i",key)+`</div>`:"");}).join("");
+}
+function renderInj(){
+  const lgSel=$("lg").value,today=dstr(Date.now()),soon=dstr(Date.now()+7*864e5);
+  const hint=`<div class="hint">👆 Tap a team to see who's missing · tap again to close</div>`;
+  if(isEuro(lgSel)){const teams=new Set();DATA.fixtures.filter(f=>f.lg===lgSel).forEach(f=>{teams.add(f.home);teams.add(f.away)});
+    const home={};[...teams].forEach(t=>{for(const k of Object.keys(DATA.leagues))if(DATA.leagues[k].table.some(r=>r.team===t)){home[t]=k;break}});
+    const I={};Object.keys(home).forEach(t=>I[t]=((DATA.injuries||{})[home[t]]||{})[t]||[]);
+    const nf=t=>DATA.fixtures.filter(x=>x.lg===lgSel&&(x.home===t||x.away===t)).sort((a,b)=>a.time<b.time?-1:1)[0];
+    const withI=Object.keys(home).filter(t=>I[t].length).sort(),none=Object.keys(home).filter(t=>!I[t].length).sort();
+    return `<div class="meta">Clubs from the leagues we track. Status is for each club's next ${esc(lgName(lgSel))} match.</div>`+hint+
+      injRows(lgSel,withI,I,t=>{const f=nf(t);return f?dstr(f.time):today},t=>{const f=nf(t);return f?`next: v ${esc(f.home===t?f.away:f.home)}, ${when(f.time)}`:""})+
+      (none.length?`<div class="meta" style="margin-top:10px">✅ No absences reported: ${none.map(esc).join(", ")}</div>`:"");}
+  const all=lgSel==="all",keys=Object.keys(DATA.leagues);
+  const nextFx=(k,team)=>DATA.fixtures.filter(f=>f.lg===k&&(f.home===team||f.away===team)&&new Date(f.time)>Date.now()-2*36e5).sort((a,b)=>new Date(a.time)-new Date(b.time))[0];
+  const scope=all?keys:[lgSel];
+  const returning=[];scope.forEach(k=>{const I=(DATA.injuries||{})[k]||{};Object.entries(I).forEach(([t,arr])=>arr.forEach(x=>{if(x.r&&x.r>=today&&x.r<=soon)returning.push({...x,team:t,k})}))});
+  returning.sort((a,b)=>a.r<b.r?-1:a.r>b.r?1:a.team<b.team?-1:1);
+  const nMiss=scope.reduce((s,k)=>s+Object.values((DATA.injuries||{})[k]||{}).reduce((q,a)=>q+a.length,0),0);
+  const seg=`<div class="seg"><button class="${IVIEW==="miss"?"on":""}" data-iv="miss">🚑 Missing <span>${nMiss}</span></button><button class="${IVIEW==="back"?"on":""}" data-iv="back">🔙 Due back · 7 days <span>${returning.length}</span></button></div>`;
+  if(IVIEW==="back"){
+    const lgs=[...new Set(returning.map(x=>x.k))].sort((a,b)=>keys.indexOf(a)-keys.indexOf(b));if(IBL!=="all"&&!lgs.includes(IBL))IBL="all";
+    const chips=all&&lgs.length>1?`<div class="chips"><button class="chip${IBL==="all"?" on":""}" data-ibl="all">All <span style="opacity:.7">${returning.length}</span></button>`+lgs.map(k=>`<button class="chip${IBL===k?" on":""}" data-ibl="${k}">${esc(DATA.leagues[k].name)} <span style="opacity:.7">${returning.filter(x=>x.k===k).length}</span></button>`).join("")+`</div>`:"";
+    const R=returning.filter(x=>IBL==="all"||x.k===IBL);
+    if(!R.length)return seg+chips+`<div class="empty">Nobody is due back in the next 7 days.</div>`;
+    const days=[...new Set(R.map(x=>x.r))];
+    return seg+chips+`<div class="meta" style="margin:4px 0 2px">Players expected back by date. Return dates are estimates from club news.</div>`+days.map(d=>`<div class="lgh">${esc(dayLabel(d))}${dayLabel(d)==="Today"||dayLabel(d)==="Tomorrow"?" · "+fmtD(d):""}</div>`+
+      R.filter(x=>x.r===d).map(x=>{const ban=x.t==="suspension";return `<div class="rb">${badge(x.team,1)}<div class="rbm"><b>${esc(x.p)}</b>${POS[x.pos]?` <span class="meta">${POS[x.pos]}</span>`:""}<div class="meta">${esc(x.team)}${all?" · "+esc(DATA.leagues[x.k].name):""}</div></div><div class="rbr"><span class="st ${ban?"sus":"back"}" style="margin:0">${ban?"Ban ends":"Returning"}</span><div class="meta" style="margin-top:3px">${ban?"Suspension":esc(x.i||"Injury")}</div></div></div>`}).join("")).join("");
+  }
+  if(all&&!keys.includes(ILG))ILG=keys[0];
+  const cur=all?ILG:lgSel;
+  const nOf=k=>Object.values((DATA.injuries||{})[k]||{}).reduce((s,a)=>s+a.length,0);
+  const chips=all?`<div class="chips" role="tablist">`+keys.map(k=>`<button class="chip${cur===k?" on":""}" role="tab" aria-selected="${cur===k}" data-ilg="${k}">${esc(DATA.leagues[k].name)} <span style="opacity:.7">${nOf(k)}</span></button>`).join("")+`</div>`:"";
+  const k=cur,I=(DATA.injuries||{})[k]||{},L=DATA.leagues[k];
+  const withI=L.table.map(r=>r.team).filter(t=>I[t]&&I[t].length),none=L.table.map(r=>r.team).filter(t=>!(I[t]&&I[t].length));
+  return seg+chips+`<div class="meta">${esc(L.name)} · updated ${esc((DATA.injUpdated||{})[k]||"")} · status is for each team's next match</div>`+hint+
+    (withI.length?injRows(k,withI,I,t=>{const f=nextFx(k,t);return f?dstr(f.time):today},t=>{const f=nextFx(k,t);return f?`next: ${f.home===t?"v "+esc(f.away)+" (H)":"v "+esc(f.home)+" (A)"}, ${when(f.time)}`:""}):`<div class="meta">No injuries or suspensions reported.</div>`)+
+    (none.length?`<div class="meta" style="margin-top:10px">✅ No absences reported: ${none.map(esc).join(", ")}</div>`:"");
+}
+const chev=open=>`<span class="chev${open?" up":""}" aria-hidden="true">⌄</span>`;
+const hintTag=()=>`<div class="tapme">👆 Tap to open</div>`;
+const closeBar=(attr,key)=>`<button class="closebar" ${attr}="${esc(key)}">▲ Tap to close</button>`;
+
+// ---------- form, head-to-head, injury impact ----------
+function formPills(fm){if(!fm||!fm.length)return '<span class="meta">no results yet</span>';
+  return fm.map(x=>`<span title="${x.ha==="H"?"v":"at"} ${esc(x.o)} ${x.s}" style="display:inline-flex;width:20px;height:20px;border-radius:5px;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-right:3px;background:${x.r==="W"?"rgba(61,220,151,.18)":x.r==="L"?"rgba(255,107,107,.18)":"#232a38"};color:${x.r==="W"?"var(--acc)":x.r==="L"?"var(--bad)":"var(--mut)"}">${x.r}</span>`).join("")}
+function formBlock(f,p){
+  const has=(p.h&&p.h.form&&p.h.form.length)||(p.a&&p.a.form&&p.a.form.length);
+  if(!has)return `<div class="box"><span class="meta">📈 Recent form isn't available for this league yet.</span></div>`;
+  const adj=x=>{const v=Math.round((x-1)*100);return v===0?"":` <span class="meta">(${v>0?"+":""}${v}% attack)</span>`};
+  return `<div class="box"><div class="meta" style="margin-bottom:4px">📈 Last 5 domestic league games (oldest → newest)</div>
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span>${tm(f.home,1)} ${p.h?formPills(p.h.form):'<span class="meta">league not tracked</span>'}${p.h&&p.h.fA?adj(p.h.fA):""}</span><span>${tm(f.away,1)} ${p.a?formPills(p.a.form):'<span class="meta">league not tracked</span>'}${p.a&&p.a.fA?adj(p.a.fA):""}</span></div></div>`;
+}
+function h2hList(home,away){
+  const out=[],add=(arr,season)=>(arr||[]).forEach(x=>{if((x.h===home&&x.a===away)||(x.h===away&&x.a===home))out.push({...x,season})});
+  Object.values(RES.leagues||{}).forEach(arr=>add(arr,"2026-27"));
+  Object.values(RES.prev||{}).forEach(o=>add(o.matches,o.season));
+  return out.sort((x,y)=>x.d<y.d?1:-1);
+}
+function h2hBlock(f){
+  const L=h2hList(f.home,f.away);
+  const haveLast=Object.keys(RES.prev||{}).includes(f.lg);
+  if(!L.length)return `<div class="box"><span class="meta">🤝 Head-to-head: no meetings ${haveLast?"this season or last":"this season"}${haveLast?"":" (last season's results for this league are still being added)"}.</span></div>`;
+  let w=0,d=0,l=0;L.forEach(x=>{const hg=x.h===f.home?x.hg:x.ag,ag=x.h===f.home?x.ag:x.hg;if(hg>ag)w++;else if(hg<ag)l++;else d++});
+  return `<div class="box"><div class="meta" style="margin-bottom:4px">🤝 Head-to-head (last two seasons): ${esc(f.home)} W${w} D${d} L${l}</div>`+
+    L.slice(0,4).map(x=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span>${fmtD(x.d)} ${x.d.slice(0,4)}</span><span>${esc(x.h)} <b>${x.hg}-${x.ag}</b> ${esc(x.a)}</span></div>`).join("")+`</div>`;
+}
+function impactBlock(f,p){
+  const one=(team,i,base,fin)=>i.cut>0.005?`<div style="font-size:12px;margin-top:2px">${tm(team,1)} missing players with ${+(i.miss).toFixed(1)} goal involvements → expected goals <b>−${Math.round(i.cut*100)}%</b> <span class="meta">(${i.who.map(x=>esc(x.p)).join(", ")})</span></div>`:"";
+  const s=one(f.home,p.ih)+one(f.away,p.ia);
+  return s?`<div class="box"><div class="meta">🩹 Injury impact on the prediction</div>${s}</div>`:"";
+}
+
+
+// ---------- day tabs + compact fixture list (tap a match for full details) ----------
+const dayKey=t=>{const d=new Date(t);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+function dayLabel(k){const today=dayKey(Date.now()),tom=dayKey(Date.now()+864e5);if(k===today)return"Today";if(k===tom)return"Tomorrow";
+  return new Date(k+"T12:00:00").toLocaleDateString([], {weekday:"short",day:"numeric",month:"short"})}
+const fxKey=f=>f.lg+"|"+f.home+"|"+f.away+"|"+f.time;
+function renderFixtures(F){
+  const days=[...new Set(F.map(f=>dayKey(f.time)))].sort();
+  if(!days.includes(DAY))DAY=days.find(d=>d>=dayKey(Date.now()))||days[0];
+  const chips=`<div class="chips" role="tablist">${days.map(d=>{const n=F.filter(f=>dayKey(f.time)===d).length;return `<button class="chip${d===DAY?" on":""}" role="tab" aria-selected="${d===DAY}" data-day="${d}">${esc(dayLabel(d))} <span style="opacity:.7">${n}</span></button>`}).join("")}</div>`;
+  const today=F.filter(f=>dayKey(f.time)===DAY).sort((a,b)=>a.time<b.time?-1:a.time>b.time?1:0);
+  const groups={};today.forEach(f=>(groups[f.lg]=groups[f.lg]||[]).push(f));
+  const order=[...Object.keys(DATA.leagues),...Object.keys((DATA.euro||{}).names||{})];
+  let FIRST=0;
+  const list=Object.keys(groups).sort((a,b)=>order.indexOf(a)-order.indexOf(b)).map(lg=>`<div class="lgh">${isEuro(lg)?"⭐ ":""}${esc(lgName(lg))}</div>`+groups[lg].map(f=>{
+      const p=predict(f),k=fxKey(f),open=OPEN===k;if(!p)return"";
+      const pk=p.pick==="draw"?"Draw":p.pick==="home"?f.home:f.away,pv=p.pick==="draw"?p.pD:p.pick==="home"?p.pH:p.pA;
+      const t=new Date(f.time).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+      return `<button class="fx${open?" open":""}" data-k="${esc(k)}" aria-expanded="${open}">
+        <span class="num" style="font-size:13px">${t}</span>
+        <span class="tm2">${tm(f.home,1)}${tm(f.away,1)}</span>
+        <span class="pk"><b>${pct(pv)}</b>${esc(pk==="Draw"?"Draw":(BADGE[pk]?BADGE[pk][0]:pk.slice(0,3).toUpperCase())+" win")}</span>${chev(open)}</button>`+
+        (!TAPPED&&!OPEN&&(FIRST++)===0?hintTag():"")+
+        (open?`<div class="fxd">${renderPred([f])}${closeBar("data-k",k)}</div>`:"");}).join("")).join("");
+  return `<div class="meta" style="margin-bottom:6px">${weekLabel()}</div>`+chips+`<div class="hint">👆 Tap a match for stats, form and team news · tap again to close</div>`+(list||`<div class="empty">No matches on this day.</div>`);
+}
+
+// ---------- views ----------
+function bar(label,p,on){return `<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><div style="width:42%;font-size:13px;${on?"font-weight:700":""}">${esc(label)}</div><div style="flex:1;background:#232a38;border-radius:4px;height:10px"><div style="width:${(p*100).toFixed(0)}%;background:${on?"var(--acc)":"var(--blue)"};height:10px;border-radius:4px"></div></div><div class="num" style="width:40px;text-align:right;font-size:13px">${pct(p)}</div></div>`}
+const rec=(w,d,l)=>`W${w} D${d} L${l}`;
+const per=(g,p)=>p?(g/p).toFixed(1):"–";
+function confPill(c){return c>=0.6?'<span class="pill hi">Strong</span>':c>=0.45?'<span class="pill md">Likely</span>':'<span class="pill lo">Toss-up</span>'}
+
+function renderPred(F){
+  return F.map(f=>{const p=predict(f);if(!p)return"";const L=lgName(f.lg);if(p.euro)return euroCard(f,p,L);const hr=p.h.r,ar=p.a.r;
+    const pickTxt=p.pick==="draw"?"Draw":(p.pick==="home"?f.home:f.away)+" win";
+    return `<div class="ev"><div class="evh"><div><div class="evt" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">${tm(f.home)}<span class="meta" style="margin:0 6px">v</span>${tm(f.away)}</div><div class="meta">${esc(L)} · ${when(f.time)}</div></div>
+      <div style="text-align:right"><div class="best">${esc(pickTxt)}</div>${confPill(p.conf)}</div></div>
+      <div style="margin-top:8px">${bar(f.home,p.pH,p.pick==="home")}${bar("Draw",p.pD,p.pick==="draw")}${bar(f.away,p.pA,p.pick==="away")}</div>
+      <table><tr><th>Likely scores</th><th>Exp. goals</th><th>Over 2.5</th><th>Both score</th></tr>
+      <tr><td>${p.top.map(s=>`${s[0]}-${s[1]} <span class="meta">${pct(s[2])}</span>`).join("<br>")}</td><td class="num">${p.lh.toFixed(1)} – ${p.la.toFixed(1)}</td><td class="num">${pct(p.o25)}</td><td class="num">${pct(p.btts)}</td></tr></table>
+      <div class="stats">
+        <div><b>${tm(f.home,1)}</b> · ${ord(p.h.pos)}<br>At home: ${rec(hr.hW,hr.hD,hr.hL)}<br>Scores ${per(hr.hGF,hr.hP)} · concedes ${per(hr.hGA,hr.hP)} a game</div>
+        <div><b>${tm(f.away,1)}</b> · ${ord(p.a.pos)}<br>Away: ${rec(ar.aW,ar.aD,ar.aL)}<br>Scores ${per(ar.aGF,ar.aP)} · concedes ${per(ar.aGA,ar.aP)} a game</div>
+      </div>
+      ${formBlock(f,p)}
+      ${h2hBlock(f)}
+      ${impactBlock(f,p)}
+      <div class="meta" style="margin-top:10px">🏥 Team news</div>
+      <div class="tn">${newsBox(f.home,teamNews(f.lg,f.home,f.time))}${newsBox(f.away,teamNews(f.lg,f.away,f.time))}</div></div>`}).join("");
+}
+
+const CNAME={TUR:"Turkish",NOR:"Norwegian",AUT:"Austrian",GRE:"Greek",SVK:"Slovak",AZE:"Azerbaijani",CZE:"Czech",BEL:"Belgian",UKR:"Ukrainian",CRO:"Croatian",ISR:"Israeli",ARM:"Armenian",POL:"Polish",BUL:"Bulgarian",POR2:"Portuguese second-tier",HUN:"Hungarian",SVN:"Slovenian",CYP:"Cypriot",KAZ:"Kazakh",SWE:"Swedish",DEN:"Danish",ROU:"Romanian",GEO:"Georgian",SUI:"Swiss",LTU:"Lithuanian",LVA:"Latvian",ALB:"Albanian",GIB:"Gibraltar",BIH:"Bosnian",AND:"Andorran",SRB:"Serbian",FIN:"Finnish"};
+function euroSideBox(name,S){
+  if(S.est)return `<div><b>${tm(name,1)}</b><br><span class="meta">Rating estimated: ${esc(CNAME[S.country]||"its")} league isn't tracked yet</span></div>`;
+  const r=S.t.r;return `<div><b>${tm(name,1)}</b> · ${ord(S.t.pos)} in ${esc(lgName(S.lg))}<br>${rec(r.W,r.D,r.L)} · scores ${per(r.GF,r.P)}, concedes ${per(r.GA,r.P)} a game</div>`;
+}
+function euroCard(f,p,L){
+  const pickTxt=p.pick==="draw"?"Draw":(p.pick==="home"?f.home:f.away)+" win";
+  const news=(S,name)=>S.est?`<div><b>${tm(name,1)}</b><br><span class="meta">No injury data for this club</span></div>`:newsBox(name,teamNews(S.lg,name,f.time));
+  const fh={h:p.H.t||{},a:p.A.t||{}};
+  return `<div class="ev"><div class="evh"><div><div class="evt" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">${tm(f.home)}<span class="meta" style="margin:0 6px">v</span>${tm(f.away)}</div><div class="meta">⭐ ${esc(L)} · ${when(f.time)}</div></div>
+    <div style="text-align:right"><div class="best">${esc(pickTxt)}</div>${confPill(p.conf)}${(p.H.est||p.A.est)?'<div class="meta" style="margin-top:3px">includes an estimate</div>':""}</div></div>
+    <div style="margin-top:8px">${bar(f.home,p.pH,p.pick==="home")}${bar("Draw",p.pD,p.pick==="draw")}${bar(f.away,p.pA,p.pick==="away")}</div>
+    <table><tr><th>Likely scores</th><th>Exp. goals</th><th>Over 2.5</th><th>Both score</th></tr>
+    <tr><td>${p.top.map(s=>`${s[0]}-${s[1]} <span class="meta">${pct(s[2])}</span>`).join("<br>")}</td><td class="num">${p.lh.toFixed(1)} – ${p.la.toFixed(1)}</td><td class="num">${pct(p.o25)}</td><td class="num">${pct(p.btts)}</td></tr></table>
+    <div class="stats">${euroSideBox(f.home,p.H)}${euroSideBox(f.away,p.A)}</div>
+    ${formBlock(f,fh)}
+    ${impactBlock(f,p)}
+    <div class="meta" style="margin-top:10px">🏥 Team news</div>
+    <div class="tn">${news(p.H,f.home)}${news(p.A,f.away)}</div></div>`;
+}
+
+function ord(n){const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])}
+
+function renderTables(){
+  const lg=$("lg").value;if(isEuro(lg))return `<div class="empty">${esc(lgName(lg))} has no league table here yet. Pick a domestic league to see its table.</div>`;
+  const keys=lg==="all"?Object.keys(DATA.leagues):[lg];
+  return keys.map(k=>{const L=DATA.leagues[k],m=MODEL[k];
+    return `<h3>${esc(L.name)}</h3><div class="meta">Attack/defence: 100 = league average. Higher attack is better; lower defence is better.</div>
+    <table><tr><th>#</th><th>Team</th><th>P</th><th>GD</th><th>Pts</th><th>Att</th><th>Def</th></tr>
+    ${L.table.map((r,i)=>{const t=m.teams[r.team];return `<tr><td class="num">${i+1}</td><td>${tm(r.team,1)}</td><td class="num">${r.P}</td><td class="num">${r.GF-r.GA>0?"+":""}${r.GF-r.GA}</td><td class="num best">${r.Pts}</td><td class="num" style="color:${t.att>=1.1?"var(--acc)":t.att<=0.9?"var(--bad)":"inherit"}">${Math.round(t.att*100)}</td><td class="num" style="color:${t.def<=0.9?"var(--acc)":t.def>=1.1?"var(--bad)":"inherit"}">${Math.round(t.def*100)}</td></tr>`}).join("")}</table>`}).join("");
+}
+
+function renderFPL(){
+  const F=DATA.fixtures.filter(f=>f.lg==="soccer_epl"&&inWeek(f));
+  if(!F.length)return `<div class="empty">No Premier League matches for ${weekLabel()}.</div>`;
+  const T=[];F.forEach(f=>{const p=predict(f);if(!p)return;
+    T.push({team:f.home,opp:f.away,ha:"H",xg:p.lh,cs:p.csH,win:p.pH});
+    T.push({team:f.away,opp:f.home,ha:"A",xg:p.la,cs:p.csA,win:p.pA});});
+  const att=[...T].sort((x,y)=>y.xg-x.xg),def=[...T].sort((x,y)=>y.cs-x.cs);
+  const list=(arr,fn)=>arr.slice(0,5).map(t=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line)"><span>${tm(t.team,1)} <span class="meta">v ${esc(t.opp)} (${t.ha})</span></span><span class="num">${fn(t)}</span></div>`).join("");
+  return `<div class="meta" style="margin-bottom:8px">Week: ${weekLabel()}. Team-level picks from the stats model. Check team news before the deadline.</div>
+  <div class="grid">
+    <div class="card" style="margin:0"><div class="meta">👑 Captain from</div><div style="font-size:18px;font-weight:700">${tm(att[0].team)}</div><div class="meta">${att[0].xg.toFixed(1)} expected goals v ${esc(att[0].opp)} (${att[0].ha})</div><div class="meta" style="margin-top:4px">Vice: ${esc(att[1].team)} (${att[1].xg.toFixed(1)})</div></div>
+    <div class="card" style="margin:0"><div class="meta">🧤 Best clean sheet</div><div style="font-size:18px;font-weight:700">${tm(def[0].team)}</div><div class="meta">${pct(def[0].cs)} chance v ${esc(def[0].opp)} (${def[0].ha})</div></div>
+  </div>
+  <h3>🎯 Attackers — most expected goals</h3>${list(att,t=>t.xg.toFixed(1))}
+  <h3>🛡️ Defenders & keepers — best clean-sheet chance</h3>${list(def,t=>pct(t.cs))}
+  <h3>🚫 Avoid — fewest expected goals</h3>${list([...att].reverse(),t=>t.xg.toFixed(1))}`;
+}
+
+
+// ---------- track record ----------
+function renderBacktest(){
+  if(!BT)return "";
+  const tile=(lab,val,sub)=>`<div class="card" style="margin:0"><div class="meta">${lab}</div><div style="font-size:22px;font-weight:700">${val}</div><div class="meta">${sub}</div></div>`;
+  const b=BT.buckets,bp=k=>b[k].n?pct(b[k].hit/b[k].n):"–";
+  const cal=BT.cal.map(c=>{const mid=(c.lo+c.hi)/2;return `<div style="display:flex;align-items:center;gap:8px;font-size:12px;margin:3px 0"><span style="width:62px" class="meta">said ${c.lo}–${c.hi}%</span><div style="flex:1;position:relative;height:10px;background:#232a38;border-radius:4px"><div style="position:absolute;left:0;top:0;height:10px;width:${(c.act*100).toFixed(0)}%;background:var(--blue);border-radius:4px"></div><div style="position:absolute;top:-2px;left:${mid}%;width:2px;height:14px;background:var(--acc)"></div></div><span class="num" style="width:58px;text-align:right">${pct(c.act)}</span></div>`}).join("");
+  const lgs=Object.entries(BT.leagues).sort((a,b)=>b[1].hit/b[1].n-a[1].hit/a[1].n).map(([k,v])=>`<div class="prow"><span>${esc(lgName(k))}</span><span class="num">${v.hit}/${v.n} · ${pct(v.hit/v.n)}</span></div>`).join("");
+  return `<h3 style="margin-top:0">🧪 Season test: ${BT.n} matches replayed</h3>
+  <div class="meta" style="margin-bottom:8px">Every league match this season from the 4th round on, predicted using only the results known before kick-off, then checked against the real score. Tested ${esc(BT.made)}.</div>
+  <div class="grid">${tile("Correct result",pct(BT.acc),`vs ${pct(BT.home)} by always picking the home team`)}${tile("Strong picks (60%+)",bp("Strong"),`${b.Strong.hit} of ${b.Strong.n} right`)}${tile("Likely picks (45–60%)",bp("Likely"),`${b.Likely.hit} of ${b.Likely.n} right`)}${tile("Toss-ups (under 45%)",bp("Toss-up"),`${b["Toss-up"].hit} of ${b["Toss-up"].n} right`)}</div>
+  <div class="grid" style="margin-top:10px">${tile("Over 2.5 goals",pct(BT.o25),"called correctly")}${tile("Both teams score",pct(BT.btts),"called correctly")}${tile("Exact score",pct(BT.exact),"top score was right")}${tile("Brier score",BT.brier.toFixed(3),`vs ${BT.brierBase.toFixed(3)} for league averages (lower is better)`)}</div>
+  <h3>Are the percentages honest?</h3><div class="meta" style="margin-bottom:4px">Blue bar = how often it actually happened. Green line = what the model said. Close together means the percentages can be trusted.</div>${cal}
+  <h3>By league</h3>${lgs}
+  <div class="box" style="margin-top:10px"><span class="meta">Not in this test: injuries (past team news isn't available) and European matches. Football is unpredictable: even the best models get about 1 match in 2 right, so judge Footipedia on the Strong picks and on whether its percentages match reality.</span></div>
+  <h3>📒 Live tracking</h3>`;
+}
+
+function renderTrack(){
+  const all=Object.values(PREDS.items||{}),lg=$("lg").value,items=all.filter(x=>lg==="all"||x.lg===lg);
+  const done=items.filter(x=>x.res).sort((a,b)=>a.time<b.time?1:-1),pending=items.filter(x=>!x.res);
+  const outc=x=>x.res.hg>x.res.ag?"home":x.res.hg<x.res.ag?"away":"draw";
+  if(!done.length)return renderBacktest()+`<div class="box" style="font-size:14px">📒 <b>Tracking started.</b> ${all.length} predictions are locked in before kick-off${pending.length?` (${pending.length} in this view)`:""}. Each one is marked right or wrong once the result is in, so the first scores appear after this weekend's matches.<div class="meta" style="margin-top:6px">Predictions keep updating with new team news until kick-off, then they're frozen. Nothing is changed afterwards.</div></div>`;
+  const n=done.length,hit=done.filter(x=>x.pick===outc(x)).length,exact=done.filter(x=>x.top===`${x.res.hg}-${x.res.ag}`).length;
+  const o25=done.filter(x=>(x.o25>=0.5)===(x.res.hg+x.res.ag>2)).length,bt=done.filter(x=>(x.btts>=0.5)===(x.res.hg>0&&x.res.ag>0)).length;
+  const strong=done.filter(x=>Math.max(x.pH,x.pD,x.pA)>=0.6),sHit=strong.filter(x=>x.pick===outc(x)).length;
+  const brier=done.reduce((a,x)=>{const o=outc(x);return a+(x.pH-(o==="home"))**2+(x.pD-(o==="draw"))**2+(x.pA-(o==="away"))**2},0)/n;
+  const tile=(lab,val,sub)=>`<div class="card" style="margin:0"><div class="meta">${lab}</div><div style="font-size:22px;font-weight:700">${val}</div><div class="meta">${sub}</div></div>`;
+  const byL=[...Object.keys(DATA.leagues),...Object.keys((DATA.euro||{}).names||{})].map(k=>{const d=done.filter(x=>x.lg===k);if(!d.length)return"";const c=d.filter(x=>x.pick===outc(x)).length;return `<div class="prow"><span>${esc(lgName(k))}</span><span class="num">${c}/${d.length} · ${pct(c/d.length)}</span></div>`}).join("");
+  return renderBacktest()+`<div class="grid">${tile("Correct result",pct(hit/n),`${hit} of ${n} matches`)}${tile("Strong picks",strong.length?pct(sHit/strong.length):"–",`${sHit} of ${strong.length} with 60%+`)}${tile("Exact score",pct(exact/n),`${exact} of ${n}`)}${tile("Over 2.5 / BTTS",`${pct(o25/n)} · ${pct(bt/n)}`,"called correctly")}</div>
+  <div class="meta" style="margin-top:8px">Brier score ${brier.toFixed(3)} (lower is better; always guessing a third each = 0.667). ${pending.length} predictions waiting for results.</div>
+  ${byL?`<h3>By league</h3>${byL}`:""}
+  <h3>Latest results</h3>`+done.slice(0,40).map(x=>{const ok=x.pick===outc(x);const pt=x.pick==="draw"?"Draw":(x.pick==="home"?x.home:x.away)+" win";
+    return `<div class="prow"><span><span class="st ${ok?"back":"out"}">${ok?"✓ Right":"✗ Wrong"}</span>${tm(x.home,1)} <b>${x.res.hg}-${x.res.ag}</b> ${esc(x.away)}</span><span class="meta" style="text-align:right">said ${esc(pt)} (${pct(Math.max(x.pH,x.pD,x.pA))})<br>score ${x.top}</span></div>`}).join("");
+}
+
+const HOW=`<div style="font-size:14px">
+<p><b>Where the numbers come from.</b> This season's league results (goals scored and conceded, split into home and away games), recent form, and injury news. No bookmaker odds are used.</p>
+<p><b>Attack and defence ratings.</b> Each team's goals per game are compared with the league average. Early in the season a few games can mislead, so every team is nudged toward average until more matches are played.</p>
+<p><b>Expected goals.</b> Home team's home attack × away team's away defence × the league's average home goals (and the same the other way round).</p>
+<p><b>Recent form.</b> Each team's last 6 league games are compared with its season average. A team in better or worse form than usual gets its attack or defence nudged, by up to 15%. Results come from football-data.co.uk.</p>
+<p><b>Injuries.</b> Missing players' goals (plus half their assists) are added up as a share of the team's season goals. Expected goals drop by 60% of that share, up to 30%, because replacements usually score some of those goals. A doubtful player counts half.</p>
+<p><b>European matches.</b> For the Champions League, Europa League and Conference League, each club's domestic attack and defence (with form and injuries) is scaled by how strong its league is, so clubs from different countries share one scale. The league strengths are approximate, based on UEFA's country rankings. Clubs from leagues we don't track yet (for example Turkey, Belgium or Greece) get an estimated rating for a typical top club in that country, and their predictions are marked "includes an estimate".</p>
+<p><b>Outcomes and scores.</b> Expected goals are turned into the chance of every scoreline (a Poisson model with a small correction for low-scoring draws). Adding those up gives win/draw/win, over 2.5 goals, both teams to score and clean-sheet chances.</p>
+<p><b>Confidence.</b> Strong = the predicted result is 60%+ likely; Likely = 45–60%; Toss-up = under 45%.</p>
+<p><b>Injuries & bans.</b> Each match shows who is out, doubtful or due back, using the expected return dates from Sportsgambler's injury lists. Players are checked against this summer's confirmed Premier League transfers and loans (ESPN): anyone still listed under a club he has left is moved to his current club or removed. Status is worked out for that match's date: back before match day = Back, due back on match day = Doubt, later or no date = Out.</p>
+<p><b>Track record.</b> Every prediction is saved before kick-off and frozen at kick-off, then marked right or wrong when the result is in. That's how you can see whether the model is any good.</p>
+<p><b>Limits.</b> Defensive absences (a missing centre-back or keeper) aren't measured, only lost goals and assists. Stats can't see tactics, new managers or rotation. Use the predictions as a guide, not a guarantee.</p></div>`;
+
+function render(){
+  const out=$("out");if(!DATA){return}
+  if(tab==="how"){out.innerHTML=HOW;return}
+  if(tab==="table"){out.innerHTML=renderTables();return}
+  if(tab==="inj"){out.innerHTML=renderInj();scrollTo_("data-i",IOPEN);return}
+  if(tab==="fpl"){out.innerHTML=renderFPL();return}
+  if(tab==="track"){out.innerHTML=renderTrack();return}
+  const F=fixtures();
+  out.innerHTML=F.length?renderFixtures(F):`<div class="empty">No matches for ${weekLabel()}. Try another week or league.</div>`;
+  scrollTo_("data-k",OPEN);
+}
+
+function scrollTo_(attr,open){const key=open||LAST;LAST=null;if(!key)return;
+  try{const el=document.querySelector(`.fx[${attr}="${CSS.escape(key)}"]`);el&&el.scrollIntoView({block:open?"start":"nearest",behavior:"smooth"})}catch(e){}}
+async function boot(){
+  try{const r=await fetch("data.json",{cache:"no-store"});DATA=await r.json();
+    try{RES=await (await fetch("results.json",{cache:"no-store"})).json()}catch(e){}
+    try{PREDS=await (await fetch("preds.json",{cache:"no-store"})).json()}catch(e){}
+    try{BT=await (await fetch("backtest.json",{cache:"no-store"})).json()}catch(e){}
+    buildModel();$("updated").textContent="Stats updated: "+DATA.updated}
+  catch(e){$("msg").innerHTML='<div class="msg">Couldn\'t load the stats — try reloading.</div>';return}
+  render();
+}
+boot();
+</script>
+</body>
+</html>
