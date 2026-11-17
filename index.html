@@ -88,6 +88,14 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 .lv{display:flex;flex-direction:column;align-items:flex-start;gap:3px}.lsc{font-size:15px}
 .ltag{font-size:11px;font-weight:700;color:#fff;background:var(--bad);border-radius:5px;padding:1px 5px;animation:pulse 1.6s ease-in-out infinite}.ftag{font-size:11px;font-weight:700;color:var(--mut);background:#232a38;border-radius:5px;padding:1px 5px}
 .lbanner{font-size:13px;background:#11151c;border:1px solid var(--line);border-radius:8px;padding:7px 10px;margin:0 0 8px}.lbanner.on{border-color:var(--bad)}.lbanner .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bad);margin-right:6px;animation:pulse 1.2s infinite}
+.bell{margin-left:auto;font-size:20px;background:#11151c;border:1px solid var(--line);border-radius:12px;width:44px;height:44px;position:relative}
+#belldot{position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--acc);display:none}#belldot.on{display:block}
+.alertsbox{background:#11151c;border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;font-size:14px}.alertsbox[hidden]{display:none}
+.alertsbox .row{display:flex;gap:8px;align-items:center;margin:8px 0}.alertsbox .big{width:100%;padding:11px;border-radius:10px;border:0;font-weight:700;background:var(--acc);color:#06140d;margin-top:6px}
+.alertsbox .big.off{background:#232a38;color:var(--fg)}.fchip{display:inline-flex;align-items:center;gap:4px;background:#232a38;border-radius:99px;padding:4px 8px;margin:3px 4px 0 0;font-size:12px}.fchip b{cursor:pointer;color:var(--mut)}
+.follow{font-size:12px;padding:4px 9px;border-radius:99px;border:1px solid var(--line);background:#11151c;color:var(--mut);margin:6px 6px 0 0}.follow.on{border-color:var(--acc);color:var(--acc)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:50;background:var(--acc);color:#06140d;font-weight:700;border-radius:12px;padding:12px 16px;box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:92vw;text-align:center}.toast[hidden]{display:none}
+@keyframes gflash{0%,100%{background:#11151c}30%{background:rgba(61,220,151,.35)}}.fx.goal{animation:gflash 1.2s ease-in-out 3}
 .closebar{display:block;width:100%;margin-top:10px;padding:10px;border-radius:8px;font-size:13px;color:var(--blue);background:#11151c;border:1px solid var(--line)}
 .fx .tm2{display:flex;flex-direction:column;gap:5px;font-size:14px;min-width:0}
 .fx .tm2 span.tm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -111,7 +119,10 @@ a{color:var(--blue)}
       <h1 style="font-family:'Space Grotesk',system-ui,sans-serif;font-weight:700;font-size:24px;letter-spacing:2px;line-height:1">FOOTIPEDIA</h1>
       <div style="font-family:'Space Grotesk',system-ui,sans-serif;font-weight:500;font-size:11px;letter-spacing:3px;color:var(--mut);margin-top:4px">PREDICTIONS · STATS · TEAM NEWS</div>
     </div>
+    <button id="bell" class="bell" aria-label="Goal alerts">🔔<span id="belldot"></span></button>
   </div>
+  <div id="alerts" class="alertsbox" hidden></div>
+  <div id="toast" class="toast" hidden></div>
   <div class="sub" style="margin-top:10px">Match predictions built only from this season's results: goals scored and conceded, home and away.</div>
 </header>
 <main>
@@ -388,12 +399,12 @@ function renderFixtures(F){
       const p=predict(f),k=fxKey(f),open=OPEN===k;if(!p)return"";
       const pk=p.pick==="draw"?"Draw":p.pick==="home"?f.home:f.away,pv=p.pick==="draw"?p.pD:p.pick==="home"?p.pH:p.pA;
       const t=new Date(f.time).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
-      return `<button class="fx${open?" open":""}" data-k="${esc(k)}" aria-expanded="${open}">
+      const lm=liveFor(f);return `<button class="fx${open?" open":""}${lm&&lm._goal&&Date.now()-lm._goal<10000?" goal":""}" data-k="${esc(k)}" aria-expanded="${open}">
         ${liveCell(f,t)}
         <span class="tm2">${tm(f.home,1)}${tm(f.away,1)}</span>
         <span class="pk"><b>${pct(pv)}</b>${esc(pk==="Draw"?"Draw":(BADGE[pk]?BADGE[pk][0]:pk.slice(0,3).toUpperCase())+" win")}</span>${chev(open)}</button>`+
         (!TAPPED&&!OPEN&&(FIRST++)===0?hintTag():"")+
-        (open?`<div class="fxd">${liveBanner(f)}${renderPred([f])}${closeBar("data-k",k)}</div>`:"");}).join("")).join("");
+        (open?`<div class="fxd">${liveBanner(f)}<div>${followBtns(f)}</div>${renderPred([f])}${closeBar("data-k",k)}</div>`:"");}).join("")).join("");
   return `<div class="meta" style="margin-bottom:6px">${weekLabel()}</div>`+chips+`<div class="hint">👆 Tap a match for stats, form and team news · tap again to close</div>`+(list||`<div class="empty">No matches on this day.</div>`);
 }
 
@@ -608,8 +619,51 @@ function liveBanner(f){const m=liveFor(f);if(!m||m.st==="NS"||m.st==="TBD"||m.hg
 function needLive(){if(!LIVE_URL||!DATA)return false;const now=Date.now();
   return DATA.fixtures.some(f=>{const k=new Date(f.time).getTime();return now>k-15*60e3&&now<k+3*36e5})}
 async function pollLive(){if(!needLive()||document.hidden===true)return;
-  try{const r=await fetch(LIVE_URL,{cache:"no-store"});const j=await r.json();if(j&&j.matches){LIVE=j;if(tab==="pred"){QUIET=true;render();QUIET=false}}}catch(e){}}
-setInterval(pollLive,60000);
+  try{const r=await fetch(LIVE_URL,{cache:"no-store"});const j=await r.json();if(j&&j.matches){goalCheck(j);LIVE=j;if(tab==="pred"){QUIET=true;render();QUIET=false}}}catch(e){}}
+setInterval(pollLive,30000);
+
+// ---------- goal alerts (phone notifications) + in-app goal flash ----------
+const LIVE_BASE=LIVE_URL.replace(/\/live$/,"");
+let FOLLOW=(()=>{try{return JSON.parse(localStorage.getItem("fp_follow")||"[]")}catch(e){return[]}})();
+let AL=(()=>{try{return JSON.parse(localStorage.getItem("fp_alerts")||"null")}catch(e){return null}})()||{on:false,mode:"teams",ft:false};
+const saveAL=()=>{try{localStorage.setItem("fp_alerts",JSON.stringify(AL));localStorage.setItem("fp_follow",JSON.stringify(FOLLOW))}catch(e){}};
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent),standalone=(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone;
+const pushOK=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window;
+function followBtns(f){return [f.home,f.away].map(t=>`<button class="follow${FOLLOW.includes(t)?" on":""}" data-follow="${esc(t)}">${FOLLOW.includes(t)?"★ Following":"☆ Follow"} ${esc(t)}</button>`).join("")}
+async function subObj(){const reg=await navigator.serviceWorker.ready;let s=await reg.pushManager.getSubscription();
+  if(!s){const k=(await (await fetch(LIVE_BASE+"/vapid")).json()).key;const pad="=".repeat((4-k.length%4)%4),raw=atob((k+pad).replace(/-/g,"+").replace(/_/g,"/"));
+    s=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:Uint8Array.from(raw,c=>c.charCodeAt(0))})}return s}
+async function syncSub(test){if(!AL.on)return;try{const s=await subObj();
+  await fetch(LIVE_BASE+"/subscribe",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sub:s.toJSON(),teams:AL.mode==="all"?"all":FOLLOW,ft:AL.ft,test:!!test})})}catch(e){}}
+async function alertsOn(){if(!pushOK())return toast("This browser can't show notifications.");
+  const p=await Notification.requestPermission();if(p!=="granted"){toast("Notifications are blocked — allow them in your phone's settings.");return}
+  AL.on=true;saveAL();await syncSub(true);renderAlerts();toast("🔔 Goal alerts are on")}
+async function alertsOff(){AL.on=false;saveAL();try{const reg=await navigator.serviceWorker.ready,s=await reg.pushManager.getSubscription();
+  if(s){await fetch(LIVE_BASE+"/unsubscribe",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({endpoint:s.endpoint})});await s.unsubscribe()}}catch(e){}renderAlerts()}
+function renderAlerts(){const b=document.getElementById("alerts");if(!b)return;document.getElementById("belldot").className=AL.on?"on":"";
+  if(b.hidden)return;
+  if(isIOS&&!standalone){b.innerHTML=`<b>🔔 Goal alerts</b><div class="meta" style="margin-top:6px">On iPhone, alerts work in the installed app. Tap <b>Share</b> (square with ↑) → <b>Add to Home Screen</b>, open Footipedia from your home screen, then tap 🔔 again.</div>`;return}
+  if(!pushOK()){b.innerHTML=`<b>🔔 Goal alerts</b><div class="meta" style="margin-top:6px">This browser can't show notifications. Try Chrome or Safari, or install the app.</div>`;return}
+  b.innerHTML=`<b>🔔 Goal alerts</b> <span class="meta">${AL.on?"· on":"· off"}</span>
+    <div class="row"><label><input type="radio" name="am" value="teams" ${AL.mode!=="all"?"checked":""}> My teams</label><label><input type="radio" name="am" value="all" ${AL.mode==="all"?"checked":""}> Every match</label></div>
+    ${AL.mode!=="all"?`<div class="meta">${FOLLOW.length?"Following:":"Tap ☆ Follow on any match to pick your teams."}</div><div>${FOLLOW.map(t=>`<span class="fchip">${badge(t,1)}${esc(t)} <b data-unfollow="${esc(t)}">✕</b></span>`).join("")}</div>`:""}
+    <div class="row"><label><input type="checkbox" id="alft" ${AL.ft?"checked":""}> Also tell me full-time scores</label></div>
+    <button class="big${AL.on?" off":""}" id="altog">${AL.on?"Turn off goal alerts":"Turn on goal alerts"}</button>`}
+document.getElementById("bell").onclick=()=>{const b=document.getElementById("alerts");b.hidden=!b.hidden;renderAlerts()};
+document.getElementById("alerts").addEventListener("click",e=>{const t=e.target;
+  if(t.id==="altog"){AL.on?alertsOff():alertsOn();return}
+  if(t.dataset&&t.dataset.unfollow){FOLLOW=FOLLOW.filter(x=>x!==t.dataset.unfollow);saveAL();renderAlerts();syncSub();return}});
+document.getElementById("alerts").addEventListener("change",e=>{const t=e.target;
+  if(t.name==="am"){AL.mode=t.value;saveAL();renderAlerts();syncSub()}else if(t.id==="alft"){AL.ft=t.checked;saveAL();syncSub()}});
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-follow]");if(!b)return;e.stopPropagation();const t=b.dataset.follow;
+  FOLLOW=FOLLOW.includes(t)?FOLLOW.filter(x=>x!==t):[...FOLLOW,t];saveAL();syncSub();
+  document.querySelectorAll(`[data-follow="${CSS.escape(t)}"]`).forEach(x=>{const on=FOLLOW.includes(t);x.className="follow"+(on?" on":"");x.textContent=(on?"★ Following ":"☆ Follow ")+t});
+  if(FOLLOW.includes(t)&&!AL.on)toast(`★ Following ${t} — tap 🔔 to get goal alerts`);renderAlerts()},true);
+let toastT=null;function toast(msg){const el=document.getElementById("toast");if(!el)return;el.textContent=msg;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,5000)}
+let PREV={};
+function goalCheck(j){const fresh={};(j.matches||[]).forEach(m=>fresh[m.id]=m);
+  Object.values(fresh).forEach(m=>{const o=PREV[m.id];if(o&&o.hg!=null&&m.hg!=null&&m.hg+m.ag>o.hg+o.ag){const who=m.hg>o.hg?m.home:m.away;
+    toast(`⚽ GOAL! ${who} — ${m.home} ${m.hg}–${m.ag} ${m.away}`);m._goal=Date.now()}else if(o&&o._goal&&Date.now()-o._goal<10000)m._goal=o._goal});PREV=fresh}
 
 // ---------- install as an app ----------
 (function(){
