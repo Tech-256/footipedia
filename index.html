@@ -91,6 +91,9 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 .lbanner{font-size:13px;background:#11151c;border:1px solid var(--line);border-radius:8px;padding:7px 10px;margin:0 0 8px}.lbanner.on{border-color:var(--bad)}.lbanner .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bad);margin-right:6px;animation:pulse 1.2s infinite}
 .bell{margin-left:auto;font-size:20px;background:#11151c;border:1px solid var(--line);border-radius:12px;width:44px;height:44px;position:relative}
 #belldot{position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--acc);display:none}#belldot.on{display:block}
+.sharebtn{margin-left:8px;font-size:18px;background:#11151c;border:1px solid var(--line);border-radius:12px;width:44px;height:44px;color:var(--fg)}
+.bell+.sharebtn{margin-left:8px}.sbx button{display:block;width:100%;text-align:left;margin-top:8px;padding:11px 12px;border-radius:10px;background:#0f1115;border:1px solid var(--line);color:var(--fg);font-size:14px}.sbx .stp{margin-top:8px;font-size:13px;color:var(--mut);line-height:1.5}.sbx .stp b{color:var(--fg)}
+.kofi2{display:block;text-align:center;margin:10px auto 0;max-width:340px;padding:10px 16px;border-radius:14px;background:#11151c;border:1px solid var(--line);color:var(--fg);font-size:14px;font-weight:600;width:100%}
 .alertsbox{background:#11151c;border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;font-size:14px}.alertsbox[hidden]{display:none}
 .alertsbox .row{display:flex;gap:8px;align-items:center;margin:8px 0}.alertsbox .big{width:100%;padding:11px;border-radius:10px;border:0;font-weight:700;background:var(--acc);color:#06140d;margin-top:6px}
 .alertsbox .big.off{background:#232a38;color:var(--fg)}.fchip{display:inline-flex;align-items:center;gap:4px;background:#232a38;border-radius:99px;padding:4px 8px;margin:3px 4px 0 0;font-size:12px}.fchip b{cursor:pointer;color:var(--mut)}
@@ -121,8 +124,10 @@ a{color:var(--blue)}
       <div style="font-family:'Space Grotesk',system-ui,sans-serif;font-weight:500;font-size:11px;letter-spacing:3px;color:var(--mut);margin-top:4px">PREDICTIONS · STATS · TEAM NEWS</div>
     </div>
     <button id="bell" class="bell" aria-label="Goal alerts">🔔<span id="belldot"></span></button>
+    <button id="sharebtn" class="sharebtn" aria-label="Share or install">📤</button>
   </div>
   <div id="alerts" class="alertsbox" hidden></div>
+  <div id="sharebox" class="alertsbox sbx" hidden></div>
   <div id="toast" class="toast" hidden></div>
   <div class="sub" style="margin-top:10px">Match predictions built only from this season's results: goals scored and conceded, home and away.</div>
 </header>
@@ -170,6 +175,7 @@ a{color:var(--blue)}
 <div class="card" id="out"><div class="empty">Loading…</div></div>
 <div id="install" class="inst" hidden></div>
 <a class="kofi" href="https://ko-fi.com/alvink58262" target="_blank" rel="noopener">☕ Support Footipedia <small>· keeps live scores running</small></a>
+<button class="kofi2" id="share2">📤 Share Footipedia with a friend</button>
 <footer class="foot">
   <p><b>Footipedia</b> is a free stats project for information and entertainment. Predictions are probabilities, not certainties, and are not betting advice. If you choose to bet, you must be 18+. Bet only what you can afford to lose. Help: <a href="https://www.begambleaware.org" target="_blank" rel="noopener">BeGambleAware.org</a> · 0808 8020 133.</p>
   <p>Data: API-Football. Not affiliated with any club, league or competition. Team names are used for identification only.</p>
@@ -677,7 +683,7 @@ function renderAlerts(){const b=document.getElementById("alerts");if(!b)return;d
     ${AL.mode!=="all"?`<div class="meta">${FOLLOW.length?"Following:":"Tap ☆ Follow on any match to pick your teams."}</div><div>${FOLLOW.map(t=>`<span class="fchip">${badge(t,1)}${esc(t)} <b data-unfollow="${esc(t)}">✕</b></span>`).join("")}</div>`:""}
     <div class="row"><label><input type="checkbox" id="alft" ${AL.ft?"checked":""}> Also tell me full-time scores</label></div>
     <button class="big${AL.on?" off":""}" id="altog">${AL.on?"Turn off goal alerts":"Turn on goal alerts"}</button>`}
-document.getElementById("bell").onclick=()=>{const b=document.getElementById("alerts");b.hidden=!b.hidden;renderAlerts()};
+document.getElementById("bell").onclick=()=>{document.getElementById("sharebox").hidden=true;const b=document.getElementById("alerts");b.hidden=!b.hidden;renderAlerts()};
 document.getElementById("alerts").addEventListener("click",e=>{const t=e.target;
   if(t.id==="altog"){AL.on?alertsOff():alertsOn();return}
   if(t.dataset&&t.dataset.unfollow){FOLLOW=FOLLOW.filter(x=>x!==t.dataset.unfollow);saveAL();renderAlerts();syncSub();return}});
@@ -709,6 +715,33 @@ function goalCheck(j){const fresh={};(j.matches||[]).forEach(m=>fresh[m.id]=m);
     box.querySelector(".go").onclick=async()=>{ev.prompt();try{await ev.userChoice}catch(e){}box.hidden=true};
     box.querySelector(".x").onclick=close});
   window.addEventListener("appinstalled",()=>{box.hidden=true});
+})();
+
+(function(){
+  const URL_="https://footipedia.app/",TXT="Free football predictions, live scores & goal alerts ⚽";
+  let ip=null;window.addEventListener("beforeinstallprompt",e=>{ip=e});
+  const standalone=window.matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  async function share(){
+    if(navigator.share){try{await navigator.share({title:"Footipedia",text:TXT,url:URL_})}catch(e){}return}
+    try{await navigator.clipboard.writeText(URL_);toast("🔗 Link copied — paste it to a friend")}catch(e){toast("Share this link: footipedia.app")}}
+  async function install(){
+    if(ip){ip.prompt();try{await ip.userChoice}catch(e){}ip=null;return}
+    const st=document.getElementById("sbstp");st.hidden=false}
+  function open(){
+    const b=document.getElementById("sharebox");
+    if(!b.hidden){b.hidden=true;return}
+    document.getElementById("alerts").hidden=true;
+    const steps=ios?'On iPhone: open <b>footipedia.app</b> in <b>Safari</b>, tap the <b>Share</b> button (square with ↑), then <b>Add to Home Screen</b>.'
+      :'On Android: open <b>footipedia.app</b> in <b>Chrome</b>, tap the <b>⋮</b> menu, then <b>Add to Home screen</b> or <b>Install app</b>.';
+    b.innerHTML='<b>📤 Share & install</b>'+
+      '<button id="sb1">👥 Send Footipedia to a friend</button>'+
+      (standalone?'<div class="stp">✅ The app is installed on this phone.</div>':'<button id="sb2">📲 Install on this phone</button><div class="stp" id="sbstp" hidden>'+steps+'</div>');
+    b.hidden=false;
+    b.querySelector("#sb1").onclick=share;
+    const i=b.querySelector("#sb2");if(i)i.onclick=install}
+  document.getElementById("sharebtn").onclick=open;
+  document.getElementById("share2").onclick=share;
 })();
 </script>
 </body>
