@@ -1,4 +1,4 @@
-"""Footipedia prediction model (v2). Mirrors the JavaScript in index.html exactly.
+"""Footipedia prediction model (v3, with AFCON qualifiers). Mirrors the JavaScript in index.html exactly.
 
 Usage:  python3 model.py data.json results.json preds.json
 Adds/refreshes a frozen prediction in preds.json for every fixture whose kick-off
@@ -16,6 +16,36 @@ RHO = -0.1     # Dixon-Coles low-score correction
 MODEL_VERSION = 3
 EURO_H, EURO_A = 1.55, 1.20   # average home/away goals in UEFA club matches
 EST_ATT, EST_DEF = 1.15, 0.85  # assumed domestic rating for clubs from leagues we do not track
+AF_HOME = 60   # AFCON qualifiers: home advantage in rating points
+AF_I = 25      # rating points at stake per match (FIFA's weight for qualifiers)
+
+# AFCON qualifiers (national teams): a FIFA-style rating. Start = 2155 - 180*ln(FIFA rank at the draw),
+# then updated after every qualifier like the FIFA ranking (We = 1/(1+10^(-dr/600)), change = 25*(W-We)).
+# Expected goals are set so the Poisson grid gives the same expected result We, around the qualifiers'
+# average goals per game.
+def afcon_ratings(A):
+    R = {t: 2155 - 180 * math.log(r) for t, r in A["rank"].items()}
+    for x in A["results"]:
+        h, a = x["h"], x["a"]
+        if h not in R or a not in R: continue
+        we = 1 / (1 + 10 ** (-(R[h] - R[a] + AF_HOME) / 600))
+        w = 1.0 if x["hg"] > x["ag"] else 0.5 if x["hg"] == x["ag"] else 0.0
+        R[h] += AF_I * (w - we); R[a] -= AF_I * (w - we)
+    n = len(A["results"])
+    T = min(3.2, max(2.0, sum(x["hg"] + x["ag"] for x in A["results"]) / n)) if n else 2.5
+    return R, T
+
+def afcon_predict(A, AR, f):
+    R, T = AR
+    if f["home"] not in R or f["away"] not in R: return None
+    we = 1 / (1 + 10 ** (-(R[f["home"]] - R[f["away"]] + AF_HOME) / 600))
+    lo, hi = -T + 0.1, T - 0.1
+    for _ in range(40):
+        s = (lo + hi) / 2; g = grid((T + s) / 2, (T - s) / 2)
+        if g["pH"] + 0.5 * g["pD"] < we: lo = s
+        else: hi = s
+    s = (lo + hi) / 2
+    return grid((T + s) / 2, (T - s) / 2)
 
 def build(data, results):
     M = {}
@@ -105,8 +135,10 @@ def euro_side(data, M, name, md):
     s = E["strength"].get(E["clubs"].get(name, ""), 0.7)
     return EST_ATT * s, EST_DEF / s, 0.0
 
-def predict(data, M, f):
+def predict(data, M, f, AR=None):
     md = f["time"][:10]
+    if f["lg"] == "afcon_q":
+        return afcon_predict(data.get("afcon"), AR, f) if AR else None
     if f["lg"].startswith("soccer_uefa"):
         ah, dh, ch = euro_side(data, M, f["home"], md); aa, da, ca = euro_side(data, M, f["away"], md)
         return grid(cl(EURO_H * ah * da * (1 - ch)), cl(EURO_A * aa * dh * (1 - ca)))
@@ -125,11 +157,12 @@ def run(data_p, results_p, preds_p):
     try: preds = json.load(open(preds_p))
     except Exception: preds = {"v": MODEL_VERSION, "items": {}}
     M = build(data, results); now = datetime.now(timezone.utc)
+    AR = afcon_ratings(data["afcon"]) if data.get("afcon") else None
     added = updated = graded = 0
     for f in data["fixtures"]:
         ko = datetime.fromisoformat(f["time"].replace("Z", "+00:00"))
         if ko <= now: continue
-        p = predict(data, M, f)
+        p = predict(data, M, f, AR)
         if not p: continue
         k = key(f); rec = dict(lg=f["lg"], home=f["home"], away=f["away"], time=f["time"],
                                made=now.strftime("%Y-%m-%dT%H:%MZ"), v=MODEL_VERSION,
@@ -140,6 +173,8 @@ def run(data_p, results_p, preds_p):
     allres = []
     for lg, R in (results.get("leagues") or {}).items():
         for x in R: allres.append((lg, x))
+    for x in ((data.get("afcon") or {}).get("results") or []):
+        if x.get("d"): allres.append(("afcon_q", x))
     for k, rec in preds["items"].items():
         if "res" in rec: continue
         for lg, x in allres:
