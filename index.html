@@ -250,8 +250,10 @@ function euroSide(name,md){
 }
 // Domestic cups: each club's league rating scaled by its league's strength (same scale as UEFA games);
 // a club we don't track is treated as an average side of a lower division.
-function cupSide(lgCup,name,md){const S=euroSide(name,md);if(!S.est)return S;const s=((DATA.cups||{}).lower||{})[lgCup]??0.65;
-  return {t:null,lg:null,att:s,def:1/s,ic:{cut:0,miss:0,who:[]},s,est:true,lower:true}}
+function cupSide(lgCup,name,md){const S=euroSide(name,md);if(!S.est)return S;const C=DATA.cups||{},E=DATA.euro;let att=[],de=[];
+  ((C.leagues||{})[lgCup]||[]).forEach(lg=>{if(!MODEL[lg])return;const s=E.strength[E.leagueCountry[lg]];Object.values(MODEL[lg].teams).forEach(t=>{att.push(t.att*t.fA*s);de.push(t.def*t.fD/s)})});
+  if(att.length)return {t:null,lg:null,att:0.85*Math.min(...att),def:1.15*Math.max(...de),ic:{cut:0,miss:0,who:[]},est:true,lower:true};
+  const s=(C.lower||{})[lgCup]??0.65;return {t:null,lg:null,att:s,def:1/s,ic:{cut:0,miss:0,who:[]},s,est:true,lower:true}}
 function predict(f){
   if(isAfcon(f.lg))return afconPredict(f);
   if(isCup(f.lg)){const md=String(f.time).slice(0,10),H=cupSide(f.lg,f.home,md),A=cupSide(f.lg,f.away,md),clamp=x=>Math.min(4,Math.max(0.2,x));
@@ -448,7 +450,7 @@ function renderPred(F){
 
 const CNAME={TUR:"Turkish",NOR:"Norwegian",AUT:"Austrian",GRE:"Greek",SVK:"Slovak",AZE:"Azerbaijani",CZE:"Czech",BEL:"Belgian",UKR:"Ukrainian",CRO:"Croatian",ISR:"Israeli",ARM:"Armenian",POL:"Polish",BUL:"Bulgarian",POR2:"Portuguese second-tier",HUN:"Hungarian",SVN:"Slovenian",CYP:"Cypriot",KAZ:"Kazakh",SWE:"Swedish",DEN:"Danish",ROU:"Romanian",GEO:"Georgian",SUI:"Swiss",LTU:"Lithuanian",LVA:"Latvian",ALB:"Albanian",GIB:"Gibraltar",BIH:"Bosnian",AND:"Andorran",SRB:"Serbian",FIN:"Finnish"};
 function euroSideBox(name,S){
-  if(S.lower)return `<div><b>${tm(name,1)}</b><br><span class="meta">Rating estimated: lower-division club we don't track</span></div>`;
+  if(S.lower)return `<div><b>${tm(name,1)}</b><br><span class="meta">Rating estimated: lower-division club (set just below the weakest top-flight side)</span></div>`;
   if(S.est)return `<div><b>${tm(name,1)}</b><br><span class="meta">Rating estimated: ${esc(CNAME[S.country]||"its")} league isn't tracked yet</span></div>`;
   const r=S.t.r;return `<div><b>${tm(name,1)}</b> · ${ord(S.t.pos)} in ${esc(lgName(S.lg))}<br>${rec(r.W,r.D,r.L)} · scores ${per(r.GF,r.P)}, concedes ${per(r.GA,r.P)} a game</div>`;
 }
@@ -581,7 +583,7 @@ const HOW=`<div style="font-size:14px">
 <p><b>European matches.</b> For the Champions League, Europa League and Conference League, each club's domestic attack and defence (with form and injuries) is scaled by how strong its league is, so clubs from different countries share one scale. The league strengths are approximate, based on UEFA's country rankings. Clubs from leagues we don't track yet (for example Turkey, Belgium or Greece) get an estimated rating for a typical top club in that country, and their predictions are marked "includes an estimate".</p>
 <p><b>Outcomes and scores.</b> Expected goals are turned into the chance of every scoreline (a Poisson model with a small correction for low-scoring draws). Adding those up gives win/draw/win, over 2.5 goals, both teams to score and clean-sheet chances.</p>
 <p><b>Confidence.</b> Strong = the predicted result is 60%+ likely; Likely = 45–60%; Toss-up = under 45%.</p>
-<p><b>Domestic cups.</b> FA Cup, EFL Cup, Copa del Rey, Coppa Italia, DFB-Pokal, Coupe de France, KNVB Cup, Taça de Portugal and the Scottish cups. Clubs from different divisions are put on one scale the same way as in European games: each club's league rating times its league's strength. A club from a division we don't track (League One, League Two, non-league, second divisions abroad) is rated as an average side of a lower division, so treat those predictions as rougher. Predictions are for the result after 90 minutes; extra time and penalties aren't predicted.</p>
+<p><b>Domestic cups.</b> FA Cup, EFL Cup, Copa del Rey, Coppa Italia, DFB-Pokal, Coupe de France, KNVB Cup, Taça de Portugal and the Scottish cups. Clubs from different divisions are put on one scale the same way as in European games: each club's league rating times its league's strength. A club from a division we don't track (League One, League Two, non-league, lower divisions abroad) is rated a little below the weakest club we track from that country, so treat those predictions as rougher. Predictions are for the result after 90 minutes; extra time and penalties aren't predicted.</p>
 <p><b>AFCON qualifiers.</b> National teams have no league table, so each country gets a rating like FIFA's: it starts from its FIFA ranking at the qualifying draw and moves after every qualifier (wins against stronger teams move it most, home teams get a small boost). The gap between two ratings sets the expected result, which is turned into goals and likely scores around the qualifiers' average of about 2.7 goals a game. Group tables are built from the results. Injury news isn't tracked for national teams.</p>
 <p><b>Injuries & bans.</b> Each match shows who is out, doubtful or due back, using the expected return dates from Sportsgambler's injury lists. Players are checked against this summer's confirmed Premier League transfers and loans (ESPN): anyone still listed under a club he has left is moved to his current club or removed. Status is worked out for that match's date: back before match day = Back, due back on match day = Doubt, later or no date = Out.</p>
 <p><b>Track record.</b> Every prediction is saved before kick-off and frozen at kick-off, then marked right or wrong when the result is in. That's how you can see whether the model is any good.</p>

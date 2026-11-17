@@ -56,6 +56,7 @@ def run(data_p, lines_p):
     C["names"] = {k: v[0] for k, v in CUPS.items()}
     C["country"] = {k: v[1] for k, v in CUPS.items()}
     C["lower"] = {k: v[2] for k, v in CUPS.items()}
+    C["leagues"] = {k: v[3] for k, v in CUPS.items()}
     res = {(r["lg"], r["h"], r["a"], r["d"]): r for r in C.get("results", [])}
     maps = {k: mapper(data, v[3]) for k, v in CUPS.items()}
     fx, seen = [], set()

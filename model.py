@@ -144,7 +144,14 @@ def cup_side(data, M, lg_cup, name, md):
             cut, _ = injury_cut(data, lg, name, md, t["r"]["GF"])
             s = E["strength"][E["leagueCountry"][lg]]
             return t["att"] * t["fA"] * s, t["de"] * t["fD"] / s, cut
-    s = data["cups"]["lower"].get(lg_cup, 0.65)   # a club we don't track: average side of a lower division
+    # A club we don't track (lower division): rated a bit below the weakest club we do track in that country.
+    E2 = data["euro"]; att, de = [], []
+    for lg in data["cups"].get("leagues", {}).get(lg_cup, []):
+        if lg not in M: continue
+        s = E2["strength"][E2["leagueCountry"][lg]]
+        for t in M[lg]["teams"].values(): att.append(t["att"] * t["fA"] * s); de.append(t["de"] * t["fD"] / s)
+    if att: return 0.85 * min(att), 1.15 * max(de), 0.0
+    s = data["cups"]["lower"].get(lg_cup, 0.65)
     return s, 1 / s, 0.0
 
 def predict(data, M, f, AR=None):
