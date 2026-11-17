@@ -170,7 +170,7 @@ a{color:var(--blue)}
 <div id="install" class="inst" hidden></div>
 <footer class="foot">
   <p><b>Footipedia</b> is a free stats project for information and entertainment. Predictions are probabilities, not certainties, and are not betting advice. If you choose to bet, you must be 18+. Bet only what you can afford to lose. Help: <a href="https://www.begambleaware.org" target="_blank" rel="noopener">BeGambleAware.org</a> · 0808 8020 133.</p>
-  <p>Data: results from football-data.co.uk, fixtures from The Odds API, tables, injuries and transfers compiled from public sports news. Not affiliated with any club, league or competition. Team names are used for identification only.</p>
+  <p>Data: API-Football. Not affiliated with any club, league or competition. Team names are used for identification only.</p>
 </footer>
 
 <p class="note">Predictions are statistical estimates, not certainties. Upsets happen every week.</p>
@@ -292,6 +292,8 @@ const POS={G:"GK",D:"DEF",M:"MID",F:"FWD"};
 const dstr=t=>new Date(t).toISOString().slice(0,10);
 const fmtD=s=>new Date(s+"T12:00:00Z").toLocaleDateString([], {day:"numeric",month:"short"});
 function status(x,matchDay){
+  if(x.fx){if(x.q)return {k:"dbt",l:"Doubt",n:x.i+" · doubtful"};
+    return x.t==="suspension"?{k:"sus",l:"Banned",n:x.i}:{k:"out",l:"Out",n:x.i}}
   if(x.t==="suspension"){if(x.r&&x.r<matchDay)return {k:"back",l:"Back",n:"ban over"};if(x.r===matchDay)return {k:"dbt",l:"Doubt",n:"ban may end match day"};return {k:"sus",l:"Banned",n:x.r?"until "+fmtD(x.r):x.i}}
   if(!x.r)return {k:"out",l:"Out",n:x.i+" · no return date"};
   if(x.r<matchDay)return {k:"back",l:"Back",n:x.i+" · due back "+fmtD(x.r)};
@@ -342,8 +344,8 @@ function renderInj(){
   const returning=[];scope.forEach(k=>{const I=(DATA.injuries||{})[k]||{};Object.entries(I).forEach(([t,arr])=>arr.forEach(x=>{if(x.r&&x.r>=today&&x.r<=soon)returning.push({...x,team:t,k})}))});
   returning.sort((a,b)=>a.r<b.r?-1:a.r>b.r?1:a.team<b.team?-1:1);
   const nMiss=scope.reduce((s,k)=>s+Object.values((DATA.injuries||{})[k]||{}).reduce((q,a)=>q+a.length,0),0);
-  const seg=`<div class="seg"><button class="${IVIEW==="miss"?"on":""}" data-iv="miss">🚑 Missing <span>${nMiss}</span></button><button class="${IVIEW==="back"?"on":""}" data-iv="back">🔙 Due back · 7 days <span>${returning.length}</span></button></div>`;
-  if(IVIEW==="back"){
+  const seg="";
+  if(false){
     const lgs=[...new Set(returning.map(x=>x.k))].sort((a,b)=>keys.indexOf(a)-keys.indexOf(b));if(IBL!=="all"&&!lgs.includes(IBL))IBL="all";
     const chips=all&&lgs.length>1?`<div class="chips"><button class="chip${IBL==="all"?" on":""}" data-ibl="all">All <span style="opacity:.7">${returning.length}</span></button>`+lgs.map(k=>`<button class="chip${IBL===k?" on":""}" data-ibl="${k}">${esc(DATA.leagues[k].name)} <span style="opacity:.7">${returning.filter(x=>x.k===k).length}</span></button>`).join("")+`</div>`:"";
     const R=returning.filter(x=>IBL==="all"||x.k===IBL);
@@ -358,7 +360,7 @@ function renderInj(){
   const chips=all?`<div class="chips" role="tablist">`+keys.map(k=>`<button class="chip${cur===k?" on":""}" role="tab" aria-selected="${cur===k}" data-ilg="${k}">${esc(DATA.leagues[k].name)} <span style="opacity:.7">${nOf(k)}</span></button>`).join("")+`</div>`:"";
   const k=cur,I=(DATA.injuries||{})[k]||{},L=DATA.leagues[k];
   const withI=L.table.map(r=>r.team).filter(t=>I[t]&&I[t].length),none=L.table.map(r=>r.team).filter(t=>!(I[t]&&I[t].length));
-  return seg+chips+`<div class="meta">${esc(L.name)} · updated ${esc((DATA.injUpdated||{})[k]||"")} · status is for each team's next match</div>`+hint+
+  return seg+chips+`<div class="meta">${esc(L.name)} · updated ${esc((DATA.injUpdated||{})[k]||"")} · players listed as out or doubtful for each team's next match</div>`+hint+
     (withI.length?injRows(k,withI,I,t=>{const f=nextFx(k,t);return f?dstr(f.time):today},t=>{const f=nextFx(k,t);return f?`next: ${f.home===t?"v "+esc(f.away)+" (H)":"v "+esc(f.home)+" (A)"}, ${when(f.time)}`:""}):`<div class="meta">No injuries or suspensions reported.</div>`)+
     (none.length?`<div class="meta" style="margin-top:10px">✅ No absences reported: ${none.map(esc).join(", ")}</div>`:"");
 }
@@ -578,14 +580,14 @@ const HOW=`<div style="font-size:14px">
 <p><b>Where the numbers come from.</b> This season's league results (goals scored and conceded, split into home and away games), recent form, and injury news. No bookmaker odds are used.</p>
 <p><b>Attack and defence ratings.</b> Each team's goals per game are compared with the league average. Early in the season a few games can mislead, so every team is nudged toward average until more matches are played.</p>
 <p><b>Expected goals.</b> Home team's home attack × away team's away defence × the league's average home goals (and the same the other way round).</p>
-<p><b>Recent form.</b> Each team's last 6 league games are compared with its season average. A team in better or worse form than usual gets its attack or defence nudged, by up to 15%. Results come from football-data.co.uk.</p>
+<p><b>Recent form.</b> Each team's last 6 league games are compared with its season average. A team in better or worse form than usual gets its attack or defence nudged, by up to 15%. Results come from API-Football.</p>
 <p><b>Injuries.</b> Missing players' goals (plus half their assists) are added up as a share of the team's season goals. Expected goals drop by 60% of that share, up to 30%, because replacements usually score some of those goals. A doubtful player counts half.</p>
 <p><b>European matches.</b> For the Champions League, Europa League and Conference League, each club's domestic attack and defence (with form and injuries) is scaled by how strong its league is, so clubs from different countries share one scale. The league strengths are approximate, based on UEFA's country rankings. Clubs from leagues we don't track yet (for example Turkey, Belgium or Greece) get an estimated rating for a typical top club in that country, and their predictions are marked "includes an estimate".</p>
 <p><b>Outcomes and scores.</b> Expected goals are turned into the chance of every scoreline (a Poisson model with a small correction for low-scoring draws). Adding those up gives win/draw/win, over 2.5 goals, both teams to score and clean-sheet chances.</p>
 <p><b>Confidence.</b> Strong = the predicted result is 60%+ likely; Likely = 45–60%; Toss-up = under 45%.</p>
 <p><b>Domestic cups.</b> FA Cup, EFL Cup, Copa del Rey, Coppa Italia, DFB-Pokal, Coupe de France, KNVB Cup, Taça de Portugal and the Scottish cups. Clubs from different divisions are put on one scale the same way as in European games: each club's league rating times its league's strength. A club from a division we don't track (League One, League Two, non-league, lower divisions abroad) is rated a little below the weakest club we track from that country, so treat those predictions as rougher. Predictions are for the result after 90 minutes; extra time and penalties aren't predicted.</p>
 <p><b>AFCON qualifiers.</b> National teams have no league table, so each country gets a rating like FIFA's: it starts from its FIFA ranking at the qualifying draw and moves after every qualifier (wins against stronger teams move it most, home teams get a small boost). The gap between two ratings sets the expected result, which is turned into goals and likely scores around the qualifiers' average of about 2.7 goals a game. Group tables are built from the results. Injury news isn't tracked for national teams.</p>
-<p><b>Injuries & bans.</b> Each match shows who is out, doubtful or due back, using the expected return dates from Sportsgambler's injury lists. Players are checked against this summer's confirmed Premier League transfers and loans (ESPN): anyone still listed under a club he has left is moved to his current club or removed. Status is worked out for that match's date: back before match day = Back, due back on match day = Doubt, later or no date = Out.</p>
+<p><b>Injuries & bans.</b> Each match shows who is listed as out, banned or doubtful for that team's next match, from API-Football's injury and suspension lists. A missing player's share of his team's goals and assists (top scorers and assisters only) lowers that team's expected goals; doubtful players count half.</p>
 <p><b>Track record.</b> Every prediction is saved before kick-off and frozen at kick-off, then marked right or wrong when the result is in. That's how you can see whether the model is any good.</p>
 <p><b>Limits.</b> Defensive absences (a missing centre-back or keeper) aren't measured, only lost goals and assists. Stats can't see tactics, new managers or rotation. Use the predictions as a guide, not a guarantee.</p></div>`;
 

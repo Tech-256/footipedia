@@ -78,6 +78,9 @@ def build(data, results):
     return M
 
 def status(x, md):
+    if x.get("fx"):                      # API-Football: listed as missing / doubtful for the next match
+        if x.get("q"): return "dbt"
+        return "sus" if x["t"] == "suspension" else "out"
     r = x.get("r")
     if x["t"] == "suspension":
         if r and r < md: return "back"
