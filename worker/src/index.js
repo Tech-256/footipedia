@@ -260,7 +260,7 @@ async function tick(env){
   if (!busy || m % 4 === 1) await scanCups(env, S);
   if (!busy || m % 4 === 3) { try { const j = await dataJob(env); if (j) S.dataError = null; } catch (e) { S.dataError = String(e.message || e); } }
   if (RL) S.rl = RL;
-  if (changed || all.length || (S.cupIds || []).length !== ids || RL) await saveState(env, S);
+  if (changed || all.length || (S.cupIds || []).length !== ids) await saveState(env, S);
 }
 
 export default {
