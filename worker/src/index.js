@@ -22,7 +22,7 @@ const CUPS = [["cup_fa","England",/^FA Cup$/i],["cup_efl","England",/^League Cup
 const cupOf = l => { const c = CUPS.find(([k,country,re]) => l.country === country && re.test(l.name)); return c ? c[0] : null; };
 const keyOf = l => LEAGUES[l.id] || cupOf(l) || (/africa cup of nations/i.test(l.name) && /qualif/i.test(l.name) ? "afcon_q" : null);
 const LIVE_ST = new Set(["1H","HT","2H","ET","BT","P","LIVE","INT","SUSP"]);
-const SITE = "https://tech-256.github.io/footipedia/";
+const SITE = "https://footipedia.app/";
 const CORS = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET,POST,OPTIONS",
   "Access-Control-Allow-Headers":"Content-Type","Cache-Control":"no-store","Content-Type":"application/json; charset=utf-8"};
 const json = (o, s=200) => new Response(JSON.stringify(o), {status:s, headers:CORS});
