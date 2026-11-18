@@ -1,7 +1,8 @@
 name: Refresh data
 
 # Downloads the live-score server's exports, rebuilds data.json / results.json / preds.json
-# with build.py, cups.py and model.py, and commits only those three files.
+# with build.py, cups.py and model.py, regenerates the search pages with gen_pages.py,
+# and commits only those files.
 on:
   schedule:
     - cron: "10 1,9,17,23 * * *"   # UTC; a little before the Claude task that copies the files into the artifact
@@ -67,6 +68,13 @@ jobs:
           python3 build.py data.json results.json ex | tee -a summary.txt
           if [ -f ex/fixtures.txt ]; then python3 cups.py data.json ex/fixtures.txt | tee -a summary.txt; fi
           python3 model.py data.json results.json preds.json | tee -a summary.txt
+          # Search-friendly pages (predictions/, leagues/, match/, sitemap.xml); on failure keep the old ones
+          set -o pipefail
+          if ! python3 gen_pages.py | tee -a summary.txt; then
+            echo "pages: failed, kept old" | tee -a summary.txt
+            git checkout -- predictions leagues match sitemap.xml 2>/dev/null || true
+            git clean -fdq predictions leagues match || true
+          fi
           cat summary.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Commit
@@ -74,7 +82,8 @@ jobs:
         run: |
           git config user.name "Tech-256"
           git config user.email "Tech-256@users.noreply.github.com"
-          git add data.json results.json preds.json
+          git add data.json results.json preds.json sitemap.xml
+          git add -A predictions leagues match
           if git diff --cached --quiet; then echo "No changes"; exit 0; fi
           git commit -m "Update data $(TZ=Europe/London date '+%-d %b %Y %H:%M')"
           git push origin HEAD:main || { git pull --rebase origin main && git push origin HEAD:main; }
