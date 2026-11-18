@@ -258,7 +258,7 @@ for lg, name in LEAGUES.items():
     rows = "".join(
         f'<tr class="{"top" if i <= 4 else "bot" if i > n_t - 3 else ""}"><td>{i}</td><td>{e(r["team"])}</td><td>{r["P"]}</td>'
         f'<td class="hide-s">{r["W"]}</td><td class="hide-s">{r["D"]}</td>'
-        f'<td class="hide-s">{r["L"]}</td><td>{r["GF"] - r["GA"]:+d}</td><td><b>{r["Pts"]}</b></td><td class="hide-s">{chips(r["team"])}</td></tr>'
+        f'<td class="hide-s">{r["L"]}</td><td>{f"{r['GF'] - r['GA']:+d}" if r["GF"] != r["GA"] else "0"}</td><td><b>{r["Pts"]}</b></td><td class="hide-s">{chips(r["team"])}</td></tr>'
         for i, r in enumerate(L.get("table", []), 1))
     up = [p for p in upcoming if p["lg"] == lg]
     recent = sorted(results.get("leagues", {}).get(lg, []), key=lambda g: g["d"])[-10:][::-1]
