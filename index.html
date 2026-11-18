@@ -597,11 +597,11 @@ function renderPlayers(){
   const list=(rows,key,n,all)=>{const s=[...rows].filter(r=>r[key]>0).sort((x,y)=>y[key]-x[key]||y[key==="g"?"a":"g"]-x[key==="g"?"a":"g"]||x.m-y.m).slice(0,n);const max=s.length?s[0][key]:0;
     return s.length?s.map((r,i)=>row(r,i,key,max,r._lg,all)).join(""):`<div class="empty">No data yet.</div>`};
   const tag=l=>P[l].map(r=>Object.assign({_lg:l},r));
-  const upd=DATA.playersUpdated?`<div class="meta" style="margin-bottom:6px">League games only · each league's top ~35 scorers · updated ${esc(DATA.playersUpdated)}</div>`:"";
+  const upd=DATA.playersUpdated?`<div class="meta" style="margin-bottom:6px">League games only · top 20 scorers and top 20 assists per league · updated ${esc(DATA.playersUpdated)}</div>`:"";
   if(lg==="all"){const rows=Object.keys(P).flatMap(tag);
-    return upd+`<h3>⚽ Top scorers across all leagues</h3>${list(rows,"g",15,1)}<h3>🎯 Most assists among the top scorers</h3>${list(rows,"a",10,1)}<div class="meta" style="margin-top:10px">Pick a league above for its full list.</div>`}
+    return upd+`<h3>⚽ Top scorers across all leagues</h3>${list(rows,"g",15,1)}<h3>🎯 Most assists</h3>${list(rows,"a",10,1)}<div class="meta" style="margin-top:10px">Pick a league above for its full list.</div>`}
   const rows=tag(lg);
-  return upd+`<h3>⚽ ${esc(lgName(lg))} top scorers</h3>${list(rows,"g",20)}<h3>🎯 Most assists among the top scorers</h3>${list(rows,"a",10)}`;
+  return upd+`<h3>⚽ ${esc(lgName(lg))} top scorers</h3>${list(rows,"g",20)}<h3>🎯 Most assists</h3>${list(rows,"a",10)}`;
 }
 
 function renderFPL(){

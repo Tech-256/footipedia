@@ -33,7 +33,7 @@ ALIAS = {"tottenham": "Tottenham Hotspur", "wolves": "Wolverhampton Wanderers", 
          "estrela": "Estrela Amadora", "academicodeviseu": "Academico de Viseu", "olympiquelyonnais": "Lyon", "lyon": "Lyon",
          "marseille": "Marseille", "stadebrestois": "Brest", "hamburgersv": "Hamburger SV", "mainz05": "Mainz 05",
          "unionberlin": "Union Berlin", "paderborn": "SC Paderborn", "heidenheim": "Heidenheim", "rbleipzig": "RB Leipzig",
-         "capeverdeislands": "Cape Verde", "congodr": "DR Congo", "cotedivoire": "Ivory Coast"}
+         "dundeeutd": "Dundee United", "dundeeunited": "Dundee United", "capeverdeislands": "Cape Verde", "congodr": "DR Congo", "cotedivoire": "Ivory Coast"}
 DROP = r"\b(fc|afc|cf|sc|ac|as|rc|bc|cd|ud|ssc|tsg|fsv|vfb|vfl|1\.|sv|club|calcio|de|fk)\b"
 
 def norm(s):
@@ -61,6 +61,10 @@ class Names:
         return hits[0] if len(hits) == 1 else None
     def map(self, lg, name):
         m = self.store.setdefault(lg, {})
+        n = norm(name)   # a fixed alias always wins, and corrects an older remembered match
+        if n in ALIAS and ALIAS[n] in (self.known.get(lg) or self.all):
+            if m.get(name) != ALIAS[n] and lg in DOMESTIC: m[name] = ALIAS[n]
+            return ALIAS[n]
         if name in m: return m[name]
         got = self._match(name, self.known.get(lg) or self.all) if lg in DOMESTIC else self._match(name, self.all)
         if got is None and lg in DOMESTIC: got = self._match(name, self.all)

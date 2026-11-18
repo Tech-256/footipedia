@@ -177,7 +177,7 @@ async function scanCups(env, S){
   for (let i = 1; i <= 14; i++) days.push(new Date(now + i*864e5).toISOString().slice(0,10));
   Object.keys(F).forEach(d => { if (!days.includes(d)) delete F[d]; });
   const due = days.find(d => !F[d] || now - F[d].at > 864e5);
-  if (!due) return;
+  if (!due) return false;
   try {
     const r = await api(env, `fixtures?date=${due}&timezone=UTC`);
     const cups = r.list.filter(x => cupOf(x.league));
@@ -186,6 +186,28 @@ async function scanCups(env, S){
     S.cupIds = [...new Set([...(S.cupIds || []), ...cups.map(x => x.league.id)])];
     await env.LIVE.put("cupfx", JSON.stringify(F));
   } catch (e) {}
+  return true;
+}
+
+// ---------- league fixtures for the next 14 days, asked league by league ----------
+// The whole-day lists above can come back incomplete, so each league is also read on its own
+// (one league per quiet minute, each league every 6 hours). /fixtures merges both, by fixture id.
+async function scanLeagues(env){
+  let L = {}; try { L = (await env.LIVE.get("lgfx", "json")) || {}; } catch (e) {}
+  const now = Date.now(), ids = Object.keys(LEAGUES);
+  const id = ids.find(i => !L[i] || now - L[i].at > 6*36e5);
+  if (!id) return false;
+  try {
+    const r = await api(env, `fixtures?league=${id}&next=99&timezone=UTC`);
+    const end = now + 15*864e5;
+    L[id] = {at: now, m: r.list.filter(x => Date.parse(x.fixture.date) <= end).map(x => ({lg: LEAGUES[id], id: x.fixture.id, ko: x.fixture.date,
+      home: x.teams.home.name, away: x.teams.away.name, round: x.league.round || "", st: x.fixture.status.short}))};
+    await env.LIVE.put("lgfx", JSON.stringify(L));
+  } catch (e) {   // keep the old list and try this league again in 30 minutes (no retry every minute)
+    L[id] = {at: now - 5.5*36e5, m: (L[id] && L[id].m) || [], error: String(e.message || e).slice(0, 200)};
+    try { await env.LIVE.put("lgfx", JSON.stringify(L)); } catch (_) {}
+  }
+  return true;
 }
 
 // ---------- season data for the refresh: standings, results, injuries, top scorers ----------
@@ -257,7 +279,7 @@ async function tick(env){
   // Side jobs (next 14 days of fixtures; season data). While matches are live they take turns and run every
   // other minute, so live checks keep the per-minute allowance; when nothing is live both run every minute.
   const busy = anyActive(S.matches || []), m = Math.floor(Date.now() / 60e3);
-  if (!busy || m % 4 === 1) await scanCups(env, S);
+  if (!busy || m % 4 === 1) { if (!(await scanCups(env, S))) await scanLeagues(env); }
   if (!busy || m % 4 === 3) { try { const j = await dataJob(env); if (j) S.dataError = null; } catch (e) { S.dataError = String(e.message || e); } }
   if (RL) S.rl = RL;
   if (changed || all.length || (S.cupIds || []).length !== ids) await saveState(env, S);
@@ -298,10 +320,14 @@ export default {
     }
     if (url.pathname === "/fixtures") {
       let F = {}; try { F = (await env.LIVE.get("cupfx", "json")) || {}; } catch (e) {}
+      let L = {}; try { L = (await env.LIVE.get("lgfx", "json")) || {}; } catch (e) {}
       const S0 = await loadState(env);
       const all = url.searchParams.get("all") === "1";
       const todays = (S0.day === today() ? S0.matches || [] : []).map(m => ({lg:m.lg, id:m.id, ko:m.ko, home:m.home, away:m.away, st:m.st, hg:m.hg, ag:m.ag}));
-      const list = [...todays, ...Object.keys(F).sort().flatMap(d => F[d].m)].filter(m => all || m.lg.startsWith("cup_"));
+      const seen = new Set(), from = today();
+      const list = [...todays, ...Object.keys(F).sort().flatMap(d => F[d].m), ...Object.values(L).flatMap(x => x.m).filter(m => m.ko.slice(0,10) >= from)]
+        .filter(m => (all || m.lg.startsWith("cup_")) && !seen.has(m.id) && seen.add(m.id))
+        .sort((a, b) => Date.parse(a.ko) - Date.parse(b.ko));
       if (url.searchParams.get("format") === "lines")
         return new Response(list.map(m => [m.lg, m.ko, m.home, m.away, m.st, m.hg ?? "", m.ag ?? ""].join("|")).join("\n"), {headers:{...CORS, "Content-Type":"text/plain; charset=utf-8"}});
       return json({days: Object.keys(F).sort(), fixtures: list});
