@@ -126,6 +126,9 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 .plr{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
 .plr .nm{min-width:0}.plr .nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.plr .st{text-align:right;font-size:12px;color:var(--mut);white-space:nowrap}.plr .st b{font-size:17px;color:var(--fg);margin-right:3px}
 .plbar{height:4px;border-radius:2px;background:#232a38;margin-top:4px;overflow:hidden}.plbar i{display:block;height:100%;background:var(--acc)}.plbar.as i{background:var(--blue)}
+.opk{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);color:var(--fg);text-decoration:none}
+.opk .mk{font-size:15px;text-align:center}.opk .nm{min-width:0}.opk .nm b{display:block}.opk .pc{text-align:right;font-size:12px;color:var(--mut)}.opk .pc b{display:block;font-size:17px;color:var(--fg)}
+.opsum{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 4px}.opsum div{flex:1;min-width:120px;background:#11151c;border:1px solid var(--line);border-radius:10px;padding:8px 10px}.opsum b{display:block;font-size:18px}
 .plout{font-size:11px;color:var(--bad);margin-left:4px}
 a{color:var(--blue)}
 </style>
@@ -186,6 +189,7 @@ a{color:var(--blue)}
 
 <div class="tabs" id="tabs">
   <button data-t="pred" class="on">🔮 Predictions</button>
+  <button data-t="ours">✅ Our pick</button>
   <button data-t="inj">🏥 Injuries</button>
   <button data-t="table">📊 Tables</button>
   <button data-t="players">⭐ Players</button>
@@ -552,6 +556,37 @@ function renderTables(){
     ${L.table.map((r,i)=>{const t=m.teams[r.team];return `<tr><td class="num">${i+1}</td><td>${tm(r.team,1)}</td><td class="num">${r.P}</td><td class="num">${r.GF-r.GA>0?"+":""}${r.GF-r.GA}</td><td class="num best">${r.Pts}</td><td class="num" style="color:${t.att>=1.1?"var(--acc)":t.att<=0.9?"var(--bad)":"inherit"}">${Math.round(t.att*100)}</td><td class="num" style="color:${t.def<=0.9?"var(--acc)":t.def>=1.1?"var(--bad)":"inherit"}">${Math.round(t.def*100)}</td></tr>`}).join("")}</table>`}).join("")+(lg==="all"?renderAfconTables():"");
 }
 
+// ---------- our pick: the model's most confident calls of the match week ----------
+const pgSlug=s=>String(s).normalize("NFKD").replace(/[^\x00-\x7f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+const opConf=v=>Math.max(v.pH,v.pD,v.pA);
+const opOutcome=r=>r.hg>r.ag?"home":r.ag>r.hg?"away":"draw";
+function opSelect(items){const s=[...items].sort((x,y)=>opConf(y)-opConf(x)),o=[];for(const v of s){if(o.length>=15)break;if(o.length>=10&&opConf(v)<0.6)break;o.push(v)}return o.sort((x,y)=>new Date(x.time)-new Date(y.time))}
+function opWeekStart(t){const d=new Date(t);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+5)%7));return d.getTime()}
+function renderOurPick(){
+  const all=Object.values((PREDS&&PREDS.items)||{});
+  if(!all.length)return `<div class="empty">Our picks appear once this week's predictions are ready.</div>`;
+  const {s,e,e2}=weekBounds(),nx=$("week").value==="next",a=nx?e:s,b=nx?e2:e;
+  const wk=opSelect(all.filter(v=>{const t=new Date(v.time);return t>=a&&t<b}));
+  const lbl=d=>d.toLocaleDateString([],{day:"numeric",month:"short"});
+  const head=`<div class="meta" style="margin-bottom:6px">${nx?"Next week":"This week"} · ${lbl(a)} – ${lbl(new Date(b-864e5))} · all leagues and cups</div>`;
+  if(!wk.length)return head+`<div class="empty">No predictions for this week yet. Try again after the next data update.</div>`;
+  // record across past weeks (same rule each week, only finished matches count)
+  const byW={};all.forEach(v=>{(byW[opWeekStart(v.time)]=byW[opWeekStart(v.time)]||[]).push(v)});
+  let hit=0,done=0;Object.values(byW).forEach(list=>opSelect(list).forEach(v=>{if(v.res){done++;if(opOutcome(v.res)===v.pick)hit++}}));
+  const wDone=wk.filter(v=>v.res),wHit=wDone.filter(v=>opOutcome(v.res)===v.pick).length;
+  const left=wk.filter(v=>!v.res),allP=left.reduce((p,v)=>p*opConf(v),1);
+  const pickTxt=v=>v.pick==="home"?esc(v.home)+" to win":v.pick==="away"?esc(v.away)+" to win":"Draw";
+  const when=v=>new Date(v.time).toLocaleString([],{weekday:"short",hour:"2-digit",minute:"2-digit"});
+  const rows=wk.map(v=>{const r=v.res,ok=r&&opOutcome(r)===v.pick;
+    return `<a class="opk" href="/match/${pgSlug(v.home+" vs "+v.away+" "+v.time.slice(0,10))}/"><span class="mk">${r?(ok?"✅":"❌"):"⏳"}</span><div class="nm"><b>${pickTxt(v)}</b><span class="meta">${esc(v.home)} v ${esc(v.away)} · ${esc(lgName(v.lg))} · ${r?`FT ${r.hg}–${r.ag}`:when(v)}</span></div><div class="pc"><b class="num">${Math.round(opConf(v)*100)}%</b>chance</div></a>`}).join("");
+  return head+`<div class="opsum">
+    <div><span class="meta">This week so far</span><b>${wDone.length?`${wHit} of ${wDone.length}`:"–"}</b><span class="meta">${wDone.length?"came true":"none played yet"}</span></div>
+    <div><span class="meta">All weeks</span><b>${done?`${hit} of ${done}`:"–"}</b><span class="meta">${done?Math.round(100*hit/done)+"% came true":"no results yet"}</span></div>
+  </div>
+  <h3>✅ Our ${wk.length} most confident calls</h3>${rows}
+  <div class="meta" style="margin-top:10px">These are the matches where our model is most sure of the result. Even strong favourites lose: ${left.length>1?`if our percentages are right, the chance that all ${left.length} still to play come true is only about <b>${allP<0.01?"under 1":Math.round(allP*100)}%</b>.`:"one in three 67% picks still goes wrong."} Not betting advice.</div>`;
+}
+
 function renderPlayers(){
   const P=DATA.players||{},lg=$("lg").value;
   if(!Object.keys(P).length)return `<div class="empty">Player stats arrive with the next data update. Check back soon.</div>`;
@@ -644,6 +679,7 @@ function render(){
   if(tab==="how"){out.innerHTML=HOW;return}
   if(tab==="table"){out.innerHTML=renderTables();return}
   if(tab==="inj"){out.innerHTML=renderInj();scrollTo_("data-i",IOPEN);return}
+  if(tab==="ours"){out.innerHTML=renderOurPick();return}
   if(tab==="players"){out.innerHTML=renderPlayers();return}
   if(tab==="fpl"){out.innerHTML=renderFPL();return}
   if(tab==="track"){out.innerHTML=renderTrack();return}
