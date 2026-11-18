@@ -31,7 +31,11 @@ const today = () => new Date().toISOString().slice(0,10);
 // ---------- API-Football ----------
 let RL = null;   // last rate-limit headers seen (for /debug)
 let KICK = 0;    // last time a visitor request woke the job (per server copy)
+let LASTCALL = 0;  // space API calls out: back-to-back requests get refused as "too many requests"
 async function api(env, path){
+  const wait = LASTCALL + 1500 - Date.now();
+  if (wait > 0) await new Promise(res => setTimeout(res, wait));
+  LASTCALL = Date.now();
   const r = await fetch("https://v3.football.api-sports.io/" + path, {headers:{"x-apisports-key": env.API_KEY}});
   const rem = r.headers.get("x-ratelimit-requests-remaining");
   RL = {t:new Date().toISOString(), path:path.split("?")[0], status:r.status, day_limit:r.headers.get("x-ratelimit-requests-limit"), day_left:rem,
@@ -204,8 +208,8 @@ async function scanLeagues(env){
     L[id] = {at: now, m: r.list.filter(x => Date.parse(x.fixture.date) <= end).map(x => ({lg: LEAGUES[id], id: x.fixture.id, ko: x.fixture.date,
       home: x.teams.home.name, away: x.teams.away.name, round: x.league.round || "", st: x.fixture.status.short}))};
     await env.LIVE.put("lgfx", JSON.stringify(L));
-  } catch (e) {   // keep the old list and try this league again in 30 minutes (no retry every minute)
-    L[id] = {at: now - 5.5*36e5, m: (L[id] && L[id].m) || [], error: String(e.message || e).slice(0, 200)};
+  } catch (e) {   // keep the old list and try this league again in 10 minutes (no retry every minute)
+    L[id] = {at: now - 6*36e5 + 10*60e3, m: (L[id] && L[id].m) || [], error: String(e.message || e).slice(0, 200)};
     try { await env.LIVE.put("lgfx", JSON.stringify(L)); } catch (_) {}
   }
   return true;
