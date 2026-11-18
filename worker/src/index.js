@@ -30,6 +30,7 @@ const today = () => new Date().toISOString().slice(0,10);
 
 // ---------- API-Football ----------
 let RL = null;   // last rate-limit headers seen (for /debug)
+let KICK = 0;    // last time a visitor request woke the job (per server copy)
 async function api(env, path){
   const r = await fetch("https://v3.football.api-sports.io/" + path, {headers:{"x-apisports-key": env.API_KEY}});
   const rem = r.headers.get("x-ratelimit-requests-remaining");
@@ -89,7 +90,7 @@ async function update(env, S, minTtl){
     if (o && o.st !== "FT" && m.st === "FT" && o.hg != null) events.push({k:"ft", id:m.id, lg:m.lg, home:m.home, away:m.away, hg:m.hg, ag:m.ag, t:now});
   }
   S.matches = fresh;
-  return {changed, events};
+  return {changed, events, fullOk: full};   // a successful full read is always saved (keeps "updated" fresh)
 }
 
 async function loadState(env){ try { return (await env.LIVE.get("today", "json")) || {}; } catch (e) { return {}; } }
@@ -267,7 +268,7 @@ async function tick(env){
   const minTtl = +(env.MIN_TTL || 15);
   const S = await loadState(env); let changed = false; const all = [];
   for (let i = 0; i < 4; i++) {
-    const r = await update(env, S, minTtl); changed = changed || r.changed;
+    const r = await update(env, S, minTtl); changed = changed || r.changed || !!r.fullOk;
     if (r.events.length) { all.push(...r.events); await notify(env, r.events); }
     if (i === 3 || !anyActive(S.matches || [])) break;
     const wait = (S.next || 0) - Date.now();
@@ -334,10 +335,14 @@ export default {
     }
     if (url.pathname !== "/live" && url.pathname !== "/debug") return json({ok:true, use:"/live"});
     const S = await loadState(env);
-    // Fallback if the minute job isn't running: refresh on request when the copy is stale.
-    if (!S.matches || S.day !== today() || Date.now() > (S.next || 0) + 120000) ctx.waitUntil(tick(env));
+    // Fallback only if the minute job looks stopped (no full read for 75+ minutes), at most once a minute per server copy,
+    // so visitors' requests never turn into extra API calls while the minute job is running.
+    const stale = !S.matches || S.day !== today() || Date.now() > Math.max(S.next || 0, Date.parse(S.updated || 0) + 75*60e3) + 120000;
+    if (stale && Date.now() - KICK > 60e3) { KICK = Date.now(); ctx.waitUntil(tick(env)); }
     if (url.pathname === "/debug") { let n = 0; try { n = ((await env.LIVE.get("subs","json")) || []).length; } catch(e){}
-      return json({updated:S.updated, next:S.next, nextFull:S.nextFull, remaining:S.remaining, error:S.error, dataError:S.dataError||null, rl:S.rl||null, subscribers:n, matches:(S.matches||[]).length, events:S.events||[]}); }
+      let L = {}; try { L = (await env.LIVE.get("lgfx", "json")) || {}; } catch (e) {}
+      const leagues = Object.fromEntries(Object.entries(L).map(([id, x]) => [LEAGUES[id] || id, {read: new Date(x.at).toISOString().slice(0,16), fixtures: (x.m || []).length, error: x.error || null}]));
+      return json({updated:S.updated, next:S.next, nextFull:S.nextFull, remaining:S.remaining, error:S.error, dataError:S.dataError||null, rl:S.rl||null, subscribers:n, matches:(S.matches||[]).length, leagues, events:S.events||[]}); }
     return json({updated: S.updated || null, matches: S.matches || [], events: (S.events || []).slice(0, 10), error: S.error || undefined});
   }
 };
