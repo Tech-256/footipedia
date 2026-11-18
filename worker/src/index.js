@@ -31,6 +31,7 @@ const today = () => new Date().toISOString().slice(0,10);
 // ---------- API-Football ----------
 let RL = null;   // last rate-limit headers seen (for /debug)
 let KICK = 0;    // last time a visitor request woke the job (per server copy)
+const LGFAIL = {}; // league id -> {t, error} of the last failed read (memory only, so failures cost no KV writes)
 let LASTCALL = 0;  // space API calls out: back-to-back requests get refused as "too many requests"
 async function api(env, path){
   const wait = LASTCALL + 1500 - Date.now();
@@ -81,7 +82,13 @@ async function update(env, S, minTtl){
       if (S.matches.some(m => LIVE_ST.has(m.st) && !live[m.id])) S.nextFull = Math.min(S.nextFull || 0, now + 5*60e3);
     }
     S.error = null;
-  } catch (e) { S.error = String(e.message || e); S.next = now + (/rateLimit|Too many/i.test(S.error) ? 20e3 : 5*60e3); return {changed:true, events}; }
+  } catch (e) {
+    const msg = String(e.message || e), same = msg === S.error;
+    S.error = msg; S.next = now + (/rateLimit|Too many/i.test(msg) ? 20e3 : 5*60e3);
+    // save a repeated error at most every 10 minutes (each save is a KV write; the free plan allows 1,000 a day)
+    const save = !same || now - (S.errSaved || 0) > 10*60e3; if (save) S.errSaved = now;
+    return {changed: save, events};
+  }
   S.next = now + gap(S.remaining, minTtl) * 1000; S.updated = new Date(now).toISOString();
   let changed = fresh.length !== Object.keys(old).length;
   for (const m of fresh) {
@@ -200,17 +207,16 @@ async function scanCups(env, S){
 async function scanLeagues(env){
   let L = {}; try { L = (await env.LIVE.get("lgfx", "json")) || {}; } catch (e) {}
   const now = Date.now(), ids = Object.keys(LEAGUES);
-  const id = ids.find(i => !L[i] || now - L[i].at > 6*36e5);
+  const id = ids.find(i => (!L[i] || now - L[i].at > 6*36e5) && !(LGFAIL[i] && now - LGFAIL[i].t < 15*60e3));
   if (!id) return false;
   try {
     const r = await api(env, `fixtures?league=${id}&next=99&timezone=UTC`);
     const end = now + 15*864e5;
     L[id] = {at: now, m: r.list.filter(x => Date.parse(x.fixture.date) <= end).map(x => ({lg: LEAGUES[id], id: x.fixture.id, ko: x.fixture.date,
       home: x.teams.home.name, away: x.teams.away.name, round: x.league.round || "", st: x.fixture.status.short}))};
-    await env.LIVE.put("lgfx", JSON.stringify(L));
-  } catch (e) {   // keep the old list and try this league again in 10 minutes (no retry every minute)
-    L[id] = {at: now - 6*36e5 + 10*60e3, m: (L[id] && L[id].m) || [], error: String(e.message || e).slice(0, 200)};
-    try { await env.LIVE.put("lgfx", JSON.stringify(L)); } catch (_) {}
+    await env.LIVE.put("lgfx", JSON.stringify(L)); delete LGFAIL[id];
+  } catch (e) {   // keep the old list; try this league again in 15 minutes
+    LGFAIL[id] = {t: now, error: String(e.message || e).slice(0, 200)};
   }
   return true;
 }
@@ -345,7 +351,8 @@ export default {
     if (stale && Date.now() - KICK > 60e3) { KICK = Date.now(); ctx.waitUntil(tick(env)); }
     if (url.pathname === "/debug") { let n = 0; try { n = ((await env.LIVE.get("subs","json")) || []).length; } catch(e){}
       let L = {}; try { L = (await env.LIVE.get("lgfx", "json")) || {}; } catch (e) {}
-      const leagues = Object.fromEntries(Object.entries(L).map(([id, x]) => [LEAGUES[id] || id, {read: new Date(x.at).toISOString().slice(0,16), fixtures: (x.m || []).length, error: x.error || null}]));
+      const leagues = Object.fromEntries(Object.keys(LEAGUES).map(id => { const x = L[id] || {}, f = LGFAIL[id];
+        return [LEAGUES[id], {read: x.at && !x.error ? new Date(x.at).toISOString().slice(0,16) : null, fixtures: (x.m || []).length, lastError: f ? new Date(f.t).toISOString().slice(11,16) + " " + f.error : null}]; }));
       return json({updated:S.updated, next:S.next, nextFull:S.nextFull, remaining:S.remaining, error:S.error, dataError:S.dataError||null, rl:S.rl||null, subscribers:n, matches:(S.matches||[]).length, leagues, events:S.events||[]}); }
     return json({updated: S.updated || null, matches: S.matches || [], events: (S.events || []).slice(0, 10), error: S.error || undefined});
   }
