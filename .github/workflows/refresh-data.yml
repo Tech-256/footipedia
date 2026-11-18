@@ -1,0 +1,80 @@
+name: Refresh data
+
+# Downloads the live-score server's exports, rebuilds data.json / results.json / preds.json
+# with build.py, cups.py and model.py, and commits only those three files.
+on:
+  schedule:
+    - cron: "10 1,9,17,23 * * *"   # UTC; a little before the Claude task that copies the files into the artifact
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SERVER: https://footipedia-live.alvinkayemba.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download exports
+        id: dl
+        run: |
+          mkdir -p ex
+          fetch() { curl -fsS --retry 2 --max-time 60 "$1"; }
+          # /data parts: paged, header "#part=X page=1/N rows=R ..."
+          got=0
+          for part in standings results prev injuries scorers; do
+            ok=0
+            for attempt in 1 2; do
+              tmp=$(mktemp); : > "$tmp"
+              if ! fetch "$SERVER/data?part=$part" > "$tmp.p1"; then sleep 5; continue; fi
+              head=$(head -1 "$tmp.p1")
+              pages=$(sed -n 's/.*page=[0-9]*\/\([0-9]*\).*/\1/p' <<<"$head")
+              rows=$(sed -n 's/.*rows=\([0-9]*\).*/\1/p' <<<"$head")
+              [ -n "$pages" ] && [ -n "$rows" ] || { sleep 5; continue; }
+              { tail -n +2 "$tmp.p1"; echo; } | sed '/^$/d' >> "$tmp"
+              fail=0
+              for ((p=2; p<=pages; p++)); do
+                fetch "$SERVER/data?part=$part&page=$p" > "$tmp.pp" || { fail=1; break; }
+                { tail -n +2 "$tmp.pp"; echo; } | sed '/^$/d' >> "$tmp"
+              done
+              n=$(wc -l < "$tmp")
+              if [ $fail = 0 ] && [ "$n" = "$rows" ]; then mv "$tmp" "ex/$part.txt"; ok=1; got=1; echo "$part: $n rows"; echo "$part: $n rows" >> summary.txt; break; fi
+              echo "$part: got $n of $rows rows (attempt $attempt)"; sleep 5
+            done
+            [ $ok = 1 ] || { echo "$part: short, kept old"; echo "$part: short or unreachable, kept old" >> summary.txt; }
+          done
+          if fetch "$SERVER/fixtures?all=1&format=lines" > ex/fixtures.raw; then
+            grep -v '^#' ex/fixtures.raw | sed '/^$/d' > ex/fixtures.txt; rm ex/fixtures.raw
+            echo "fixtures: $(wc -l < ex/fixtures.txt) lines" | tee -a summary.txt; got=1
+          else rm -f ex/fixtures.raw; echo "fixtures: unreachable, kept old" | tee -a summary.txt; fi
+          echo "got=$got" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        if: steps.dl.outputs.got == '1'
+        run: |
+          python3 build.py data.json results.json ex | tee -a summary.txt
+          if [ -f ex/fixtures.txt ]; then python3 cups.py data.json ex/fixtures.txt | tee -a summary.txt; fi
+          python3 model.py data.json results.json preds.json | tee -a summary.txt
+          cat summary.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit
+        if: steps.dl.outputs.got == '1'
+        run: |
+          git config user.name "Tech-256"
+          git config user.email "Tech-256@users.noreply.github.com"
+          git add data.json results.json preds.json
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "Update data $(TZ=Europe/London date '+%-d %b %Y %H:%M')"
+          git push origin HEAD:main || { git pull --rebase origin main && git push origin HEAD:main; }
