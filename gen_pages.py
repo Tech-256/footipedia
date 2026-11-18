@@ -228,7 +228,7 @@ for p in items:
         kp = team_players(team)
         if kp:
             bits.append("Key players: " + ", ".join(
-                f'{e(r["p"])} ({r["g"]} goals, {r["a"]} assists)' + (f'<span class="out">{injured(team, r["p"]).upper()}</span>' if injured(team, r["p"]) else "")
+                f'{e(r["p"])} ({r["g"]} goal{"" if r["g"] == 1 else "s"}, {r["a"]} assist{"" if r["a"] == 1 else "s"})' + (f'<span class="out">{injured(team, r["p"]).upper()}</span>' if injured(team, r["p"]) else "")
                 for r in kp))
         inj = injuries(team)
         if inj:
@@ -279,7 +279,7 @@ for lg, name in LEAGUES.items():
             return (f'<div class="pl"><span><b>{e(r["p"])}</b>' + (f'<span class="out">{o}</span>' if o else "") +
                     f' <small>{e(r["t"])} · {r["m"]} apps</small></span><span><b>{r[key]}</b> <small>{"goals" if key == "g" else "assists"}</small></span></div>')
         body += [f"<h2>{e(name)} top scorers</h2>", '<div class="card">' + "".join(plrow(r, "g") for r in sc) + "</div>",
-                 "<h2>Most assists</h2>", '<div class="card">' + "".join(plrow(r, "a") for r in asx) + "</div>"]
+                 "<h2>Most assists among the top scorers</h2>", '<div class="card">' + "".join(plrow(r, "a") for r in asx) + "</div>"]
     if recent:
         body += ["<h2>Latest results</h2>", '<div class="card">' + "<br>".join(
             f'{e(g["d"])} · {e(g["h"])} {g["hg"]}–{g["ag"]} {e(g["a"])}' for g in recent) + "</div>"]
