@@ -91,6 +91,22 @@ def injuries(team):
     lg = TEAM_LEAGUE.get(team)
     return (data.get("injuries", {}).get(lg, {}) or {}).get(team, []) if lg else []
 
+PLAYERS = data.get("players", {})
+
+def team_players(team, n=2):
+    lg = TEAM_LEAGUE.get(team)
+    rows = [r for r in PLAYERS.get(lg, []) if r["t"] == team and (r["g"] or r["a"])]
+    return sorted(rows, key=lambda r: (-r["g"], -r["a"]))[:n]
+
+def injured(team, name):
+    for x in injuries(team):
+        if x["p"] == name:
+            return "doubtful" if x.get("q") else "out"
+    return None
+
+def chips(team):
+    return "".join(f'<span class="f {r}">{r}</span>' for r, g, _ in form(team))
+
 # ---------- page shell ----------
 CSS = """:root{--bg:#0f1115;--card:#171a21;--line:#262b36;--fg:#e8eaf0;--mut:#8a93a6;--acc:#3ddc97;--warn:#ffb547;--bad:#ff6b6b;--blue:#6aa8ff}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
@@ -109,6 +125,11 @@ th:nth-child(2),td:nth-child(2){text-align:left}th{color:var(--mut);font-weight:
 .f{display:inline-block;width:22px;text-align:center;border-radius:5px;font-size:12px;font-weight:700;margin-right:2px}
 .f.W{background:rgba(61,220,151,.18);color:var(--acc)}.f.D{background:#232a38;color:var(--mut)}.f.L{background:rgba(255,107,107,.15);color:var(--bad)}
 .ok{color:var(--acc)}.no{color:var(--bad)}footer{color:var(--mut);font-size:12px;padding:24px 16px 40px}
+.pbar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:10px 0 2px}.pbar i{display:block}
+.pbar .h{background:var(--acc)}.pbar .d{background:#3a4252}.pbar .a{background:var(--blue)}
+tr.top td:first-child{box-shadow:inset 3px 0 var(--acc)}tr.bot td:first-child{box-shadow:inset 3px 0 var(--bad)}
+.pl{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line)}.pl:first-child{border-top:0}
+.pl small{color:var(--mut)}.out{color:var(--bad);font-size:12px;margin-left:4px}
 @media(max-width:560px){.hide-s{display:none}}"""
 
 def page(path, title, desc, body, crumbs=(), jsonld=None):
@@ -187,7 +208,9 @@ for p in items:
         parts.append(f'<div class="card"><b>Full time: {e(h)} {res["hg"]}–{res["ag"]} {e(a)}</b><br>'
                      f'We predicted: {e(pick_text(p))} — <b class="{"ok" if good else "no"}">{"correct" if good else "wrong"}</b></div>')
     parts.append(f'<div class="card"><div class="bars"><div><b>{pct(p["pH"])}</b>{e(h)} win</div>'
-                 f'<div><b>{pct(p["pD"])}</b>Draw</div><div><b>{pct(p["pA"])}</b>{e(a)} win</div></div></div>')
+                 f'<div><b>{pct(p["pD"])}</b>Draw</div><div><b>{pct(p["pA"])}</b>{e(a)} win</div></div>'
+                 f'<div class="pbar"><i class="h" style="width:{p["pH"]*100:.1f}%"></i><i class="d" style="width:{p["pD"]*100:.1f}%"></i>'
+                 f'<i class="a" style="width:{p["pA"]*100:.1f}%"></i></div></div>')
     parts.append(f'<div class="card">Our pick: <b>{e(pick_text(p))}</b> · Most likely score: <b>{e(p["top"])}</b><br>'
                  f'Expected goals: {e(h)} {p["lh"]:.1f}, {e(a)} {p["la"]:.1f} · '
                  f'Over 2.5 goals: {pct(p["o25"])} · Both teams score: {pct(p["btts"])}</div>')
@@ -202,6 +225,11 @@ for p in items:
         fm = form(team)
         if fm:
             bits.append("Last 5 (oldest first): " + "".join(f'<span class="f {r}" title="{e(g["h"])} {g["hg"]}–{g["ag"]} {e(g["a"])}">{r}</span>' for r, g, _ in fm))
+        kp = team_players(team)
+        if kp:
+            bits.append("Key players: " + ", ".join(
+                f'{e(r["p"])} ({r["g"]} goals, {r["a"]} assists)' + (f'<span class="out">{injured(team, r["p"]).upper()}</span>' if injured(team, r["p"]) else "")
+                for r in kp))
         inj = injuries(team)
         if inj:
             fx = inj[0].get("fx")
@@ -226,9 +254,11 @@ for p in items:
 # league pages
 for lg, name in LEAGUES.items():
     L = data["leagues"][lg]
+    n_t = len(L.get("table", []))
     rows = "".join(
-        f'<tr><td>{i}</td><td>{e(r["team"])}</td><td>{r["P"]}</td><td class="hide-s">{r["W"]}</td><td class="hide-s">{r["D"]}</td>'
-        f'<td class="hide-s">{r["L"]}</td><td>{r["GF"] - r["GA"]:+d}</td><td><b>{r["Pts"]}</b></td></tr>'
+        f'<tr class="{"top" if i <= 4 else "bot" if i > n_t - 3 else ""}"><td>{i}</td><td>{e(r["team"])}</td><td>{r["P"]}</td>'
+        f'<td class="hide-s">{r["W"]}</td><td class="hide-s">{r["D"]}</td>'
+        f'<td class="hide-s">{r["L"]}</td><td>{r["GF"] - r["GA"]:+d}</td><td><b>{r["Pts"]}</b></td><td class="hide-s">{chips(r["team"])}</td></tr>'
         for i, r in enumerate(L.get("table", []), 1))
     up = [p for p in upcoming if p["lg"] == lg]
     recent = sorted(results.get("leagues", {}).get(lg, []), key=lambda g: g["d"])[-10:][::-1]
@@ -238,12 +268,23 @@ for lg, name in LEAGUES.items():
             '<div class="card list">' + ("".join(match_row(p) for p in up) or "No predicted fixtures right now.") + "</div>",
             "<h2>Table</h2>",
             f'<div class="card"><table><tr><th>#</th><th>Team</th><th>P</th><th class="hide-s">W</th><th class="hide-s">D</th>'
-            f'<th class="hide-s">L</th><th>GD</th><th>Pts</th></tr>{rows}</table></div>']
+            f'<th class="hide-s">L</th><th>GD</th><th>Pts</th><th class="hide-s">Form</th></tr>{rows}</table>'
+            '<div class="sub">Top 4 and bottom 3 highlighted. Form: last 5 league games, oldest first.</div></div>']
+    pls = PLAYERS.get(lg, [])
+    if pls:
+        sc = [r for r in pls if r["g"]][:10]
+        asx = sorted([r for r in pls if r["a"]], key=lambda r: (-r["a"], -r["g"]))[:5]
+        def plrow(r, key):
+            o = injured(r["t"], r["p"])
+            return (f'<div class="pl"><span><b>{e(r["p"])}</b>' + (f'<span class="out">{o}</span>' if o else "") +
+                    f' <small>{e(r["t"])} · {r["m"]} apps</small></span><span><b>{r[key]}</b> <small>{"goals" if key == "g" else "assists"}</small></span></div>')
+        body += [f"<h2>{e(name)} top scorers</h2>", '<div class="card">' + "".join(plrow(r, "g") for r in sc) + "</div>",
+                 "<h2>Most assists</h2>", '<div class="card">' + "".join(plrow(r, "a") for r in asx) + "</div>"]
     if recent:
         body += ["<h2>Latest results</h2>", '<div class="card">' + "<br>".join(
             f'{e(g["d"])} · {e(g["h"])} {g["hg"]}–{g["ag"]} {e(g["a"])}' for g in recent) + "</div>"]
     title = f"{name} predictions, table & fixtures {results.get('season', '')}".strip()
-    desc = f"Free {name} predictions for every upcoming match, plus the live table, latest results, form and injury news."
+    desc = f"Free {name} predictions for every upcoming match, plus the live table, top scorers, latest results, form and injury news."
     urls.append(page(f"leagues/{LEAGUE_SLUG[lg]}/", title, desc, "\n".join(body),
                      [("Footipedia", ""), ("Predictions", "predictions/"), (name, None)]))
 

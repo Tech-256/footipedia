@@ -123,6 +123,10 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 .fx .pk b{display:block;font-size:16px;color:var(--fg)}
 .fxd{border:1px solid var(--blue);border-top:0;border-radius:0 0 10px 10px;margin:0 0 8px;padding:4px 10px 10px;background:var(--card)}
 .fxd .ev{border-top:0}
+.plr{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.plr .nm{min-width:0}.plr .nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.plr .st{text-align:right;font-size:12px;color:var(--mut);white-space:nowrap}.plr .st b{font-size:17px;color:var(--fg);margin-right:3px}
+.plbar{height:4px;border-radius:2px;background:#232a38;margin-top:4px;overflow:hidden}.plbar i{display:block;height:100%;background:var(--acc)}.plbar.as i{background:var(--blue)}
+.plout{font-size:11px;color:var(--bad);margin-left:4px}
 a{color:var(--blue)}
 </style>
 </head>
@@ -184,6 +188,7 @@ a{color:var(--blue)}
   <button data-t="pred" class="on">🔮 Predictions</button>
   <button data-t="inj">🏥 Injuries</button>
   <button data-t="table">📊 Tables</button>
+  <button data-t="players">⭐ Players</button>
   <button data-t="fpl">⚽ FPL picks</button>
   <button data-t="track">📒 Track record</button>
   <button data-t="how">❓ How it works</button>
@@ -547,6 +552,23 @@ function renderTables(){
     ${L.table.map((r,i)=>{const t=m.teams[r.team];return `<tr><td class="num">${i+1}</td><td>${tm(r.team,1)}</td><td class="num">${r.P}</td><td class="num">${r.GF-r.GA>0?"+":""}${r.GF-r.GA}</td><td class="num best">${r.Pts}</td><td class="num" style="color:${t.att>=1.1?"var(--acc)":t.att<=0.9?"var(--bad)":"inherit"}">${Math.round(t.att*100)}</td><td class="num" style="color:${t.def<=0.9?"var(--acc)":t.def>=1.1?"var(--bad)":"inherit"}">${Math.round(t.def*100)}</td></tr>`}).join("")}</table>`}).join("")+(lg==="all"?renderAfconTables():"");
 }
 
+function renderPlayers(){
+  const P=DATA.players||{},lg=$("lg").value;
+  if(!Object.keys(P).length)return `<div class="empty">Player stats arrive with the next data update. Check back soon.</div>`;
+  if(lg!=="all"&&!P[lg])return `<div class="empty">Player stats are for the domestic leagues. Pick a league such as the Premier League or La Liga.</div>`;
+  const out=(l,r)=>{const I=((DATA.injuries||{})[l]||{})[r.t]||[];const x=I.find(i=>i.p===r.p);return x?`<span class="plout">${x.q?"doubtful":"out"}</span>`:""};
+  const row=(r,i,key,max,l,all)=>{const v=r[key],pg=r.m?(v/r.m).toFixed(2):"–";
+    return `<div class="plr"><span class="meta num">${i+1}</span><div class="nm"><b>${esc(r.p)}${out(l,r)}</b><span class="meta">${esc(r.t)}${all?" · "+esc(lgName(l)):""} · ${r.m} apps</span><div class="plbar${key==="a"?" as":""}"><i style="width:${max?Math.round(100*v/max):0}%"></i></div></div><div class="st"><b class="num">${v}</b>${key==="g"?"goals":"assists"}<br>${pg} per game</div></div>`};
+  const list=(rows,key,n,all)=>{const s=[...rows].filter(r=>r[key]>0).sort((x,y)=>y[key]-x[key]||y[key==="g"?"a":"g"]-x[key==="g"?"a":"g"]||x.m-y.m).slice(0,n);const max=s.length?s[0][key]:0;
+    return s.length?s.map((r,i)=>row(r,i,key,max,r._lg,all)).join(""):`<div class="empty">No data yet.</div>`};
+  const tag=l=>P[l].map(r=>Object.assign({_lg:l},r));
+  const upd=DATA.playersUpdated?`<div class="meta" style="margin-bottom:6px">League games only · updated ${esc(DATA.playersUpdated)}</div>`:"";
+  if(lg==="all"){const rows=Object.keys(P).flatMap(tag);
+    return upd+`<h3>⚽ Top scorers across all leagues</h3>${list(rows,"g",15,1)}<h3>🎯 Most assists across all leagues</h3>${list(rows,"a",10,1)}<div class="meta" style="margin-top:10px">Pick a league above for its full list.</div>`}
+  const rows=tag(lg);
+  return upd+`<h3>⚽ ${esc(lgName(lg))} top scorers</h3>${list(rows,"g",20)}<h3>🎯 Most assists</h3>${list(rows,"a",10)}`;
+}
+
 function renderFPL(){
   const F=DATA.fixtures.filter(f=>f.lg==="soccer_epl"&&inWeek(f));
   if(!F.length)return `<div class="empty">No Premier League matches for ${weekLabel()}.</div>`;
@@ -622,6 +644,7 @@ function render(){
   if(tab==="how"){out.innerHTML=HOW;return}
   if(tab==="table"){out.innerHTML=renderTables();return}
   if(tab==="inj"){out.innerHTML=renderInj();scrollTo_("data-i",IOPEN);return}
+  if(tab==="players"){out.innerHTML=renderPlayers();return}
   if(tab==="fpl"){out.innerHTML=renderFPL();return}
   if(tab==="track"){out.innerHTML=renderTrack();return}
   const F=fixtures();

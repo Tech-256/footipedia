@@ -6,7 +6,7 @@ DIR holds the server's text exports:
   results.txt    (/data?part=results)                lg|date|home|away|hg|ag|round
   prev.txt       (/data?part=prev)                   same, last season
   injuries.txt   (/data?part=injuries)               lg|team|player|type|reason|fixture_iso
-  scorers.txt    (/data?part=scorers)                lg|team|player|pos|goals|assists|apps
+  scorers.txt    (/data?part=scorers)                lg|team|player|pos|goals|assists|apps  (also kept as data["players"])
   fixtures.txt   (/fixtures?all=1&format=lines)      lg|kickoff|home|away|status|hg|ag
 Lines starting with # are headers. Team names are mapped to the names the app already uses (badges,
 saved predictions and followed teams stay the same); the mapping is kept in data["apiNames"].
@@ -142,6 +142,22 @@ def run(data_p, results_p, d):
             teams[team].append(row)
         data.setdefault("injuries", {})[lg] = dict(teams)
         data.setdefault("injUpdated", {})[lg] = now.astimezone(UK).strftime("%-d %B %Y, %H:%M")
+
+    # ---- players: top scorers and assists per league (same scorers.txt export) ----
+    pl = defaultdict(dict)
+    for p in lines(d, "scorers.txt"):
+        if len(p) >= 7 and p[0] in DOMESTIC and p[2].strip():
+            team = N.map(p[0], p[1])
+            row = {"p": p[2].strip(), "t": team, "pos": {"G": "G", "D": "D", "M": "M", "A": "F", "F": "F"}.get(p[3][:1], "-"),
+                   "g": I(p[4]), "a": I(p[5]), "m": I(p[6])}
+            old = pl[p[0]].get((team, row["p"]))
+            if not old or (row["g"], row["a"], row["m"]) > (old["g"], old["a"], old["m"]): pl[p[0]][(team, row["p"])] = row
+    if pl:
+        P = data.setdefault("players", {})
+        for lg, rows in pl.items():
+            P[lg] = sorted(rows.values(), key=lambda r: (-r["g"], -r["a"], r["m"], r["p"]))
+        data["playersUpdated"] = now.astimezone(UK).strftime("%-d %B %Y, %H:%M")
+    else: report.append("players: none received, kept old")
 
     # ---- fixtures: domestic + UEFA + AFCON from the server (cups are merged by cups.py) ----
     fx, keep = [], set()
