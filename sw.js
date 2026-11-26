@@ -1,5 +1,5 @@
 // Footipedia service worker: app shell cached for offline use; data always fetched fresh when online.
-const SHELL="fp-shell-v2";
+const SHELL="fp-shell-v3";
 const FILES=["./","index.html","manifest.json","icons/icon-192.png","icons/icon-512.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(SHELL).then(c=>c.addAll(FILES)));self.skipWaiting()});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==SHELL&&k!=="fp-data").map(k=>caches.delete(k)))));self.clients.claim()});

@@ -195,6 +195,36 @@ def run(data_p, results_p, preds_p):
         if k in preds["items"]: updated += 1
         else: added += 1
         preds["items"][k] = rec
+    # Duplicates of one real match: a rescheduled match gets a new key (the date is part of it), and a
+    # renamed team ("Sabah FK" -> "Sabah FA") gives a new key too, so the old entry stayed behind.
+    # Two entries are the same match when they're in the same competition and either have the same teams
+    # within 10 days, or kick off at the same moment with one team in common (a team can't play twice at once).
+    # In each group keep graded entries, else the ones matching a current fixture, else the most recently
+    # made; drop the other (ungraded) entries. Graded entries are never removed.
+    cur = {key(f) for f in data["fixtures"]}
+    It = preds["items"]; ks = list(It); parent = {k: k for k in ks}
+    def root(k):
+        while parent[k] != k: parent[k] = parent[parent[k]]; k = parent[k]
+        return k
+    by = {}
+    for k in ks:
+        r = It[k]
+        by.setdefault(("teams", r["lg"], r["home"], r["away"]), []).append(k)
+        by.setdefault(("h", r["lg"], r["time"], r["home"]), []).append(k)
+        by.setdefault(("a", r["lg"], r["time"], r["away"]), []).append(k)
+    day = lambda k: datetime.fromisoformat(It[k]["time"][:10])
+    for g, lst in by.items():
+        for i, x in enumerate(lst):
+            for y in lst[i + 1:]:
+                if g[0] != "teams" or abs((day(x) - day(y)).days) <= 10: parent[root(x)] = root(y)
+    clusters = {}
+    for k in ks: clusters.setdefault(root(k), []).append(k)
+    dropped = 0
+    for cl in clusters.values():
+        if len(cl) < 2: continue
+        keep = [c for c in cl if "res" in It[c]] or [c for c in cl if c in cur] or [max(cl, key=lambda c: It[c]["made"])]
+        for c in cl:
+            if c not in keep and "res" not in It[c]: del It[c]; dropped += 1
     allres = []
     for lg, R in (results.get("leagues") or {}).items():
         for x in R: allres.append((lg, x))
@@ -209,7 +239,7 @@ def run(data_p, results_p, preds_p):
                     (datetime.fromisoformat(x["d"]) - datetime.fromisoformat(rec["time"][:10])).days) <= 3:
                 rec["res"] = {"hg": x["hg"], "ag": x["ag"]}; graded += 1; break
     json.dump(preds, open(preds_p, "w"), separators=(",", ":"), ensure_ascii=False)
-    print(f"preds: {added} added, {updated} refreshed, {graded} graded, {len(preds['items'])} total")
+    print(f"preds: {added} added, {updated} refreshed, {graded} graded, {dropped} duplicates removed, {len(preds['items'])} total")
 
 if __name__ == "__main__":
     run(*sys.argv[1:4])

@@ -700,6 +700,17 @@ async function boot(){
   render();pollLive();
 }
 boot();
+// The data is rebuilt four times a day. An installed app or a tab left open never reloads the page, so check
+// for newer data whenever the app comes back on screen and every 15 minutes while it's open.
+let LASTCHK=Date.now();
+async function refreshData(){if(!DATA||Date.now()-LASTCHK<5*60e3)return;LASTCHK=Date.now();
+  try{const d=await (await fetch("data.json",{cache:"no-store"})).json();if(!d||d.updated===DATA.updated)return;
+    let r=RES,p=PREDS;try{r=await (await fetch("results.json",{cache:"no-store"})).json()}catch(e){}
+    try{p=await (await fetch("preds.json",{cache:"no-store"})).json()}catch(e){}
+    DATA=d;RES=r;PREDS=p;AFR=null;for(const k in MODEL)delete MODEL[k];buildModel();
+    $("updated").textContent="Stats updated: "+DATA.updated;QUIET=true;render();QUIET=false}catch(e){}}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")refreshData()});
+setInterval(refreshData,15*60e3);
 
 // ---------- live scores (from our own live-score server; nothing shows if it's unreachable) ----------
 const LIVE_URL="https://footipedia-live.alvinkayemba.workers.dev/live";

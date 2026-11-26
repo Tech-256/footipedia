@@ -42,12 +42,21 @@ def mapper(data, leagues):
     teams = [r["team"] for lg in leagues for r in data["leagues"].get(lg, {}).get("table", [])]
     by = {norm(t): t for t in teams}
     def m(name):
+        """Returns (mapped name, True if it was only a loose part-of-name match)."""
         n = norm(name)
-        if n in ALIAS and ALIAS[n] in teams: return ALIAS[n]
-        if n in by: return by[n]
+        if n in ALIAS and ALIAS[n] in teams: return ALIAS[n], False
+        if n in by: return by[n], False
         hits = [t for k, t in by.items() if len(n) > 3 and len(k) > 3 and (n in k or k in n)]
-        return hits[0] if len(hits) == 1 else name
+        return (hits[0], True) if len(hits) == 1 else (name, False)
     return m
+
+def busy(data, team, t):
+    """True if the team already has a league/European game within 36 hours: then a loose name match
+    (Brora Rangers -> Rangers) must be a different club."""
+    for f in data["fixtures"]:
+        if f["lg"].startswith("cup_") or team not in (f["home"], f["away"]): continue
+        if abs((datetime.fromisoformat(f["time"].replace("Z", "+00:00")) - t).total_seconds()) < 36 * 3600: return True
+    return False
 
 def run(data_p, lines_p):
     data = json.load(open(data_p))
@@ -64,8 +73,10 @@ def run(data_p, lines_p):
         p = line.strip().split("|")
         if len(p) < 5 or p[0] not in CUPS: continue
         lg, ko, h, a, st = p[:5]; hg, ag = (p[5] if len(p) > 5 else ""), (p[6] if len(p) > 6 else "")
-        h, a = maps[lg](h), maps[lg](a)
         t = datetime.fromisoformat(ko.replace("Z", "+00:00")).astimezone(timezone.utc)
+        (h2, lh), (a2, la) = maps[lg](h), maps[lg](a)
+        h = h if lh and busy(data, h2, t) else h2
+        a = a if la and busy(data, a2, t) else a2
         iso = t.strftime("%Y-%m-%dT%H:%M:%SZ")
         if st == "FT" and hg != "" and ag != "":
             res[(lg, h, a, iso[:10])] = {"lg": lg, "h": h, "a": a, "d": iso[:10], "hg": int(hg), "ag": int(ag)}

@@ -180,6 +180,11 @@ def run(data_p, results_p, d):
             E = data["euro"]
             def em(n):
                 n2 = E.get("alias", {}).get(n, n)
+                # exact names first, so a club we don't track isn't swallowed by a loose match (Lillestrom -> Lille)
+                for t in N.all:
+                    if norm(t) == norm(n2): return t
+                for k in E.get("clubs", {}):
+                    if norm(k) == norm(n2): return k
                 got = N._match(n2, N.all)
                 if got: return got
                 for k in E.get("clubs", {}):
